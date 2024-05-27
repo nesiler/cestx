@@ -1,11 +1,15 @@
 package main
 
 import (
-	"fmt"
-	"github.com/nesiler/cestx/common"
+	nsd "github.com/nesiler/cestx/common"
 )
 
 func main() {
-	ip := externalIP()
-	fmt.Println("IP address:", ip)
+
+	ip, err := nsd.ExternalIP()
+	if err != nil {
+		nsd.Err(err, "Error: ", err.Error())
+		return
+	}
+	nsd.Info("External IP: ", ip)
 }

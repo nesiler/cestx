@@ -18,11 +18,10 @@ var (
 		color.New(color.FgHiRed).Add(color.Bold).Printf(format, args...)
 		os.Exit(1)
 	}
-	Ok                = color.New(color.FgHiGreen).PrintlnFunc()
-	downloadErrorsLog *os.File
+	Ok = color.New(color.FgHiGreen).PrintlnFunc()
 )
 
-func externalIP() (string, error) {
+func ExternalIP() (string, error) {
 	ifaces, err := net.Interfaces()
 	if err != nil {
 		return "", err
