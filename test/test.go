@@ -6,9 +6,13 @@ import (
 
 func main() {
 
+	nsd.Head("Test")
+	nsd.Out("This is a test.")
+	nsd.Info("This is an info message.")
+
 	ip, err := nsd.ExternalIP()
 	if err != nil {
-		nsd.Err(err, "Error: ", err.Error())
+		nsd.Fatal("%s", "Error: ", err.Error())
 		return
 	}
 	nsd.Info("External IP: ", ip)
