@@ -1,8 +1,8 @@
-package test
+package main
 
 import (
 	"fmt"
-	
+	"github.com/nesiler/cestx/common"
 )
 
 func main() {

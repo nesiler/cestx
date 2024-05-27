@@ -12,3 +12,6 @@ require (
 	github.com/robfig/cron/v3 v3.0.1 // indirect
 	golang.org/x/sys v0.18.0 // indirect
 )
+
+// for local development
+replace github.com/nesiler/cestx/registry => ../registry
