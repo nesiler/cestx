@@ -1,0 +1,8 @@
+{
+  "github_token": "",
+  "repo_owner": "nesiler",
+  "repo_name": "CESTX",
+  "repo_path": "/home/CESTX",
+  "check_interval": 60,
+  "ansible_path": "/home/CESTX/ansible"
+}
