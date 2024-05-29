@@ -1,0 +1,11 @@
+{
+  "id": "test1",
+  "name": "test1",
+  "address": "",
+  "port": 8080,
+  "healthCheck": {
+    "endpoint": "/health",
+    "interval": "10s",
+    "timeout": "1s"
+  }
+}

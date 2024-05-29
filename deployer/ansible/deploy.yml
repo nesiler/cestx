@@ -1,0 +1,25 @@
+- name: Deploy Service
+  hosts: "{{ service }}"
+  tasks:
+    - name: Pull latest changes
+      git:
+        repo: "https://github.com/nesiler/CESTX"
+        dest: "/home/CESTX"
+        update: yes
+
+    - name: Deploy Service
+      shell: |
+        cd /home/CESTX/{{ service }}
+        {{ deploy_command[service] }}
+  vars:
+    deploy_command:
+      REDIS: "docker compose up -d --force-recreate"
+      POSTGRESQL: "docker compose up -d --force-recreate"
+      RABBITMQ: "docker compose up -d --force-recreate"
+      REGISTRY: "go build && ./program-name"
+      LOGGING-S: "go build && ./program-name"
+      TASK-S: "go build && ./program-name"
+      PROXY-S: "go build && ./program-name"
+      TEMPLATE-S: "go build && ./program-name"
+      MACHINE-S: "go build && ./program-name"
+      API-GW: "dotnet run"

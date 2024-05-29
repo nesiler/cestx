@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/go-redis/redis/v8"
-	nsd "github.com/nesiler/cestx/common"
+	"github.com/nesiler/cestx/common"
 	"github.com/robfig/cron/v3"
 )
 
@@ -51,18 +51,18 @@ func main() {
 	// Load configuration file
 	configFile, err := os.ReadFile("config.json")
 	if err != nil {
-		nsd.Fatal("Error reading config file: %v\n", err)
+		common.Fatal("Error reading config file: %v\n", err)
 	}
 
 	err = json.Unmarshal(configFile, &configData)
 	if err != nil {
-		nsd.Fatal("Error parsing config file: %v\n", err)
+		common.Fatal("Error parsing config file: %v\n", err)
 	}
 
 	// Initialize Redis client using config data
 	redisConfig, ok := configData.ExternalServices["redis"]
 	if !ok {
-		nsd.Fatal("Redis configuration not found in config file\n")
+		common.Fatal("Redis configuration not found in config file\n")
 	}
 
 	rdb = redis.NewClient(&redis.Options{
@@ -76,8 +76,8 @@ func main() {
 	// Start the cron scheduler
 	c.Start()
 
-	nsd.Info("Server started on :8080")
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	common.Info("Server started on 192.168.4.63:3434")
+	log.Fatal(http.ListenAndServe("192.168.4.63:3434", nil))
 }
 
 func registerServiceHandler(w http.ResponseWriter, r *http.Request) {
@@ -99,16 +99,16 @@ func registerServiceHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func registerService(service Service) {
-	nsd.Info("Registering service: %s", service.Name)
+	common.Info("Registering service: %s", service.Name)
 
 	serviceData, err := json.Marshal(service)
 	if err != nil {
-		nsd.Fatal("Error serializing service data: %v\n", err)
+		common.Fatal("Error serializing service data: %v\n", err)
 	}
 
 	err = rdb.Set(ctx, "service:"+service.ID, serviceData, 0).Err()
 	if err != nil {
-		nsd.Fatal("Error storing service data in Redis: %v\n", err)
+		common.Fatal("Error storing service data in Redis: %v\n", err)
 	}
 }
 
@@ -150,7 +150,7 @@ func getConfigHandler(w http.ResponseWriter, r *http.Request) {
 func scheduleHealthCheck(service Service) {
 	interval, err := time.ParseDuration(service.HealthCheck.Interval)
 	if err != nil {
-		nsd.Fatal("Error parsing interval: %v\n", err)
+		common.Fatal("Error parsing interval: %v\n", err)
 	}
 
 	cronSpec := "@every " + interval.String()
@@ -168,6 +168,6 @@ func monitorService(service Service) {
 
 	err = rdb.HSet(ctx, "service:"+service.ID, "status", status).Err()
 	if err != nil {
-		nsd.Warn("Error updating status for service %s: %v", service.Name, err)
+		common.Warn("Error updating status for service %s: %v", service.Name, err)
 	}
 }

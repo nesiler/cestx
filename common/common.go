@@ -1,9 +1,13 @@
 package common
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
 	"net"
+	"net/http"
 	"os"
+	"strings"
 
 	"github.com/fatih/color"
 )
@@ -56,4 +60,57 @@ func ExternalIP() (string, error) {
 		}
 	}
 	return "", errors.New("Error: No network connection found.")
+}
+
+
+// RegisterService sends a registration request to the registry with the given JSON data.
+func RegisterService(jsonData []byte) {
+	var service map[string]interface{}
+	err := json.Unmarshal(jsonData, &service)
+	if err != nil {
+		Fatal("Error unmarshalling JSON data: %v\n", err)
+	}
+
+	// Check if the service JSON has an IP address, if not get it manually
+	address, ok := service["address"].(string)
+	if !ok || strings.TrimSpace(address) == "" {
+		ip, err := ExternalIP()
+		if err != nil {
+			Fatal("Error getting external IP address: %v\n", err)
+		}
+		service["address"] = ip
+	}
+
+	// Marshal the updated service JSON data
+	updatedJsonData, err := json.Marshal(service)
+	if err != nil {
+		Fatal("Error marshalling updated JSON data: %v\n", err)
+	}
+
+	// Get the registry host from environment variables
+	registryHost := os.Getenv("REGISTRY_HOST")
+	if registryHost == "" {
+		Fatal("REGISTRY_HOST environment variable not set\n")
+	}
+
+	// Send the registration request to the registry
+	resp, err := http.Post("http://"+registryHost+"/register", "application/json", bytes.NewBuffer(updatedJsonData))
+	if err != nil {
+		Fatal("Error sending registration request: %v\n", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		Fatal("Failed to register service, received status code: %d\n", resp.StatusCode)
+	}
+
+	Ok("Service registered successfully")
+}
+
+// HealthHandler returns an HTTP handler function for the health check endpoint.
+func HealthHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"status":"healthy"}`))
+	}
 }
