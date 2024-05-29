@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/fatih/color"
 )
@@ -62,7 +63,6 @@ func ExternalIP() (string, error) {
 	return "", errors.New("Error: No network connection found.")
 }
 
-
 // RegisterService sends a registration request to the registry with the given JSON data.
 func RegisterService(jsonData []byte) {
 	var service map[string]interface{}
@@ -112,5 +112,34 @@ func HealthHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`{"status":"healthy"}`))
+	}
+}
+
+// SendMessageToChat sends a message to the chat using the Python API.
+func SendMessageToTelegram(message string) {
+	time.Sleep(1 * time.Second)
+	// Create the JSON payload
+	payload := map[string]string{"message": message}
+	jsonData, err := json.Marshal(payload)
+	if err != nil {
+		Fatal("Error marshalling JSON data: %v\n", err)
+	}
+
+	// Get the Python API host from environment variables
+	// apiHost := os.Getenv("PYTHON_API_HOST")
+	// if apiHost == "" {
+	// 	Fatal("PYTHON_API_HOST environment variable not set\n")
+	// }
+
+	// Send the POST request to the Python API
+	resp, err := http.Post("http://"+"localhost:5005"+"/send", "application/json", bytes.NewBuffer(jsonData))
+	if err != nil {
+		Fatal("Error sending message: %v\n", err)
+	}
+	defer resp.Body.Close()
+
+	// Check for success response
+	if resp.StatusCode != http.StatusOK {
+		Fatal("Failed to send message, received status code: %d\n", resp.StatusCode)
 	}
 }
