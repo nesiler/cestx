@@ -20,15 +20,11 @@ type Config struct {
 
 func LoadConfig(filename string) (*Config, error) {
 	data, err := os.ReadFile(filename)
-	if err != nil {
-		return nil, err
-	}
+	common.FailError(err, "error reading config file: %v")
 
 	var config Config
 	err = json.Unmarshal(data, &config)
-	if err != nil {
-		return nil, err
-	}
+	common.FailError(err, "error parsing config file: %v")
 
 	return &config, nil
 }
@@ -58,12 +54,12 @@ func exportSSHKeyToHost(keyName, user, host string) error {
 
 func setupSSHKeysForHosts(keyName string, user string, hosts []string) error {
 	if err := ensureSSHKeyExists(keyName); err != nil {
-		return common.Fatal("failed to create SSH key: %v", err)
+		return common.Err("failed to create SSH key: %v", err)
 	}
 
 	for _, host := range hosts {
 		if err := exportSSHKeyToHost(keyName, user, host); err != nil {
-			return fmt.Errorf("failed to export SSH key to host %s: %w", host, err)
+			return common.Err("failed to export SSH key to host %s: %v", host, err)
 		}
 	}
 
