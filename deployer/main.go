@@ -1,17 +1,19 @@
 package main
 
 import (
-	"fmt"
 	"log"
+	"os"
+	"os/exec"
 	"time"
 
+	"github.com/nesiler/cestx/common"
 	"gopkg.in/ini.v1"
 )
 
 func readInventory(filePath string) ([]string, error) {
 	cfg, err := ini.Load(filePath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read inventory file: %w", err)
+		return nil, common.Fatal("error loading inventory: %v", err)
 	}
 
 	hosts := []string{}
@@ -29,16 +31,23 @@ func readInventory(filePath string) ([]string, error) {
 	return hosts, nil
 }
 
+func Deploy(config *Config, serviceName string) error {
+	cmd := exec.Command("ansible-playbook", "-i", config.AnsiblePath+"/inventory.ini", config.AnsiblePath+"/deploy.yml", "-e", "service="+serviceName, "--private-key", os.Getenv("HOME")+"/.ssh/master")
+	cmd.Stdout = log.Writer()
+	cmd.Stderr = log.Writer()
+	return cmd.Run()
+}
+
 func main() {
 
 	inventoryPath := "./ansible/inventory.ini"
 	hosts, err := readInventory(inventoryPath)
 	if err != nil {
-		log.Fatalf("Error reading inventory: %v", err)
+		common.Fatal("Error reading inventory: %v", err)
 	}
 
 	if err := setupSSHKeysForHosts("master", "root", hosts); err != nil {
-		log.Fatalf("Error setting up SSH keys: %v", err)
+		common.Fatal("Error setting up SSH keys: %v", err)
 	}
 
 	// Load configuration
@@ -56,13 +65,14 @@ func main() {
 	for {
 		commit, err := client.GetLatestCommit(config.RepoOwner, config.RepoName)
 		if err != nil {
-			log.Printf("Error getting latest commit: %v", err)
+			common.Err("Error getting latest commit: %v", err)
 			time.Sleep(time.Second * 10)
 			continue
 		}
 
 		if commit != latestCommit {
 			log.Printf("New commit detected: %s", commit)
+			// Send message to telegram with common package
 			latestCommit = commit
 			err := client.PullLatest(config.RepoPath)
 			if err != nil {
