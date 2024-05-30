@@ -1,0 +1,11 @@
+{
+  "id": "logger-s",
+  "name": "Logger",
+  "address": "",
+  "port": 4063,
+  "healthCheck": {
+    "endpoint": "/health",
+    "interval": "30s",
+    "timeout": "5s"
+  }
+}

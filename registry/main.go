@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"strconv"
@@ -76,10 +75,10 @@ func main() {
 	c.Start()
 
 	currentHost, err := common.ExternalIP()
-	common.FailError(err)
+	common.FailError(err, "")
 
 	common.Info("Server started on: ", currentHost)
-	log.Fatal(http.ListenAndServe(fmt.Sprintf(currentHost, "3434"), nil))
+	common.FailError(http.ListenAndServe(fmt.Sprintf(currentHost, "3434"), nil), "")
 }
 
 func registerServiceHandler(w http.ResponseWriter, r *http.Request) {

@@ -1,0 +1,11 @@
+{
+  "id": "dynoxy-s",
+  "name": "Dynoxy",
+  "address": "",
+  "port": 4066,
+  "healthCheck": {
+    "endpoint": "/health",
+    "interval": "30s",
+    "timeout": "5s"
+  }
+}

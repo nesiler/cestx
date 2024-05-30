@@ -2,7 +2,6 @@ package main
 
 import (
 	"log"
-	"os"
 	"os/exec"
 	"time"
 
@@ -22,8 +21,9 @@ func readInventory(filePath string) ([]string, error) {
 			continue
 		}
 		for _, key := range section.Keys() {
-			if ansibleHost := key.String(); ansibleHost != "" {
-				hosts = append(hosts, ansibleHost)
+			if key.Name() == "ansible_host" {
+				common.Info("Found host: %s\n", key.String())
+				hosts = append(hosts, key.String())
 			}
 		}
 	}
@@ -42,7 +42,7 @@ func checkSSHKeyExported(hosts []string) bool {
 }
 
 func Deploy(config *Config, serviceName string) error {
-	cmd := exec.Command("ansible-playbook", "-i", config.AnsiblePath+"/inventory.ini", config.AnsiblePath+"/deploy.yml", "-e", "service="+serviceName, "--private-key", os.Getenv("HOME")+"/.ssh/master")
+	cmd := exec.Command("ansible-playbook", "-i", config.AnsiblePath+"/inventory.ini", config.AnsiblePath+"/deploy.yml", "-e", "service="+serviceName)
 	cmd.Stdout = log.Writer()
 	cmd.Stderr = log.Writer()
 	return cmd.Run()

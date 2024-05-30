@@ -1,0 +1,11 @@
+{
+  "id": "taskmaster-s",
+  "name": "TaskMaster",
+  "address": "",
+  "port": 4065,
+  "healthCheck": {
+    "endpoint": "/health",
+    "interval": "30s",
+    "timeout": "5s"
+  }
+}

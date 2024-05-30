@@ -1,0 +1,11 @@
+{
+  "id": "template-s",
+  "name": "Template",
+  "address": "",
+  "port": 4067,
+  "healthCheck": {
+    "endpoint": "/health",
+    "interval": "30s",
+    "timeout": "5s"
+  }
+}

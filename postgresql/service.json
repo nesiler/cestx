@@ -1,0 +1,11 @@
+{
+  "id": "postgresql",
+  "name": "PostgreSQL",
+  "address": "",
+  "port": 4061,
+  "healthCheck": {
+    "endpoint": "/health",
+    "interval": "30s",
+    "timeout": "5s"
+  }
+}
