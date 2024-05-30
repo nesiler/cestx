@@ -66,7 +66,7 @@ func main() {
 
 	// Load configuration
 	config, err := LoadConfig("config.json")
-	common.Err("Error loading configuration: %v\n", err)
+	common.Fatal("Error loading configuration: %v\n", err)
 
 	// Initialize GitHub client
 	client := NewGitHubClient(config.GitHubToken)

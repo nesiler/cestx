@@ -48,8 +48,10 @@ func errorPrintfFunc(f func(format string, a ...interface{})) func(format string
 
 func FailError(err error, format string, args ...interface{}) {
 	if err != nil {
-		Fatal(format, err, args[0])
+		Err(format, args...)
+		Fatal(format, err)
 	}
+
 }
 
 // SendMessageToChat sends a message to the chat using the Python API.
