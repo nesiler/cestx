@@ -2,30 +2,42 @@ package main
 
 import (
 	"log"
+	"os"
 	"os/exec"
 	"time"
 
+	"github.com/joho/godotenv"
 	"github.com/nesiler/cestx/common"
-	"gopkg.in/ini.v1"
+	"gopkg.in/yaml.v2"
 )
 
+// Host represents a single host in the inventory.
+type Host struct {
+	AnsibleHost              string `yaml:"ansible_host"`
+	AnsibleSSHPrivateKeyFile string `yaml:"ansible_ssh_private_key_file"`
+}
+
+// Inventory represents the structure of the inventory YAML file.
+type Inventory struct {
+	All struct {
+		Hosts map[string]Host `yaml:"hosts"`
+	} `yaml:"all"`
+}
+
+// readInventory reads the inventory file and returns a slice of ansible_host values.
 func readInventory(filePath string) ([]string, error) {
-	cfg, err := ini.Load(filePath)
-	if err != nil {
-		return nil, common.Err("error reading inventory file: %v", err)
-	}
+
+	data, err := os.ReadFile(filePath)
+	common.FailError(err, "error reading inventory file: %v", filePath)
+
+	var inventory Inventory
+	err = yaml.Unmarshal(data, &inventory)
+	common.FailError(err, "error unmarshalling inventory: %v", filePath)
 
 	hosts := []string{}
-	for _, section := range cfg.Sections() {
-		if section.Name() == "DEFAULT" {
-			continue
-		}
-		for _, key := range section.Keys() {
-			if key.Name() == "ansible_host" {
-				common.Info("Found host: %s\n", key.String())
-				hosts = append(hosts, key.String())
-			}
-		}
+	for name, host := range inventory.All.Hosts {
+		common.Info("Found host %s with IP %s\n", name, host.AnsibleHost)
+		hosts = append(hosts, host.AnsibleHost)
 	}
 
 	return hosts, nil
@@ -42,15 +54,15 @@ func checkSSHKeyExported(hosts []string) bool {
 }
 
 func Deploy(config *Config, serviceName string) error {
-	cmd := exec.Command("ansible-playbook", "-i", config.AnsiblePath+"/inventory.ini", config.AnsiblePath+"/deploy.yml", "-e", "service="+serviceName)
+	cmd := exec.Command("ansible-playbook", "-i", config.AnsiblePath+"/inventory.yaml", config.AnsiblePath+"/deploy.yml", "-e", "service="+serviceName)
 	cmd.Stdout = log.Writer()
 	cmd.Stderr = log.Writer()
 	return cmd.Run()
 }
 
 func main() {
-
-	inventoryPath := "./ansible/inventory.ini"
+	godotenv.Load(".env")
+	inventoryPath := "./ansible/inventory.yaml"
 	hosts, err := readInventory(inventoryPath)
 	if err != nil {
 		common.Fatal("Error reading inventory: %v", err)
@@ -66,7 +78,10 @@ func main() {
 
 	// Load configuration
 	config, err := LoadConfig("config.json")
-	common.Err("Error loading configuration: %v\n", err)
+	common.FailError(err, "Error loading configuration: %v\n", err)
+
+	// Get the Python API host from dotenv
+	common.PYTHON_API_HOST = os.Getenv("PYTHON_API_HOST")
 
 	// Initialize GitHub client
 	client := NewGitHubClient(config.GitHubToken)

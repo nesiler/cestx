@@ -1,14 +1,12 @@
 package common
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/json"
 	"fmt"
 	"net"
 	"net/http"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -30,6 +28,7 @@ var (
 	TELEGRAM_TOKEN  string
 	CHAT_ID         string
 	PYTHON_API_HOST string
+	REGISTRY_HOST   string
 	foundEnvVar     map[string]string
 )
 
@@ -41,6 +40,7 @@ func newlinePrintfFunc(f func(format string, a ...interface{})) func(format stri
 
 func errorPrintfFunc(f func(format string, a ...interface{})) func(format string, a ...interface{}) error {
 	return func(format string, a ...interface{}) error {
+		fmt.Println()
 		f(format+"\n", a...)
 		return fmt.Errorf(format, a...)
 	}
@@ -48,8 +48,10 @@ func errorPrintfFunc(f func(format string, a ...interface{})) func(format string
 
 func FailError(err error, format string, args ...interface{}) {
 	if err != nil {
-		Fatal(format, err, args[0])
+		Err(format, args...)
+		Fatal(format, err)
 	}
+
 }
 
 // SendMessageToChat sends a message to the chat using the Python API.
@@ -62,7 +64,6 @@ func SendMessageToTelegram(message string) {
 
 	// Get the Python API host from environment variables
 	if PYTHON_API_HOST == "" {
-		PYTHON_API_HOST, err = FindEnvVar("PYTHON_API_HOST")
 		FailError(err, "Error finding PYTHON_API_HOST: %v\n")
 	}
 
@@ -95,12 +96,13 @@ func RegisterService(jsonData []byte) {
 	updatedJsonData, err := json.Marshal(service)
 	FailError(err, "Error marshalling JSON data: %v\n")
 
-	// Get the registry host from environment variables
-	registryHost, err := FindEnvVar("REGISTRY_HOST")
-	FailError(err, "Error finding REGISTRY_HOST: %v\n")
+	// chec if the registry host is set
+	if REGISTRY_HOST == "" {
+		Fatal("Error finding REGISTRY_HOST: %v\n")
+	}
 
 	// Send the registration request to the registry
-	resp, err := http.Post("http://"+registryHost+"/register", "application/json", bytes.NewBuffer(updatedJsonData))
+	resp, err := http.Post("http://"+REGISTRY_HOST+"/register", "application/json", bytes.NewBuffer(updatedJsonData))
 	FailError(err, "")
 
 	defer resp.Body.Close()
@@ -110,130 +112,6 @@ func RegisterService(jsonData []byte) {
 	}
 
 	Ok("Service registered successfully")
-}
-
-// FindEnvVar searches for an environment variable in various locations recursively.
-func FindEnvVar(varName string) (string, error) {
-	// 1. Check system environment variables
-	if val, exists := os.LookupEnv(varName); exists {
-		return val, nil
-	}
-
-	// Check if the variable was already found
-	if foundVal, ok := foundEnvVar[varName]; ok {
-		return foundVal, nil
-	}
-
-	// 2. Check .env and config.json files recursively (2 levels up and down)
-	Warn("\nSearching for environment variable '" + varName + "' in .env and config.json files...\n")
-	Info("\nCurrent directory: ", getCurrentDir(0))
-	var foundVal string
-
-	for level := -2; level <= 2; level++ {
-		startDir := getCurrentDir(level)
-		err := filepath.Walk(startDir, func(path string, info os.FileInfo, err error) error {
-			FailError(err, "")
-
-			// Skip the starting directory itself
-			if path == startDir {
-				return nil
-			}
-
-			// Check for .env files
-			if !info.IsDir() && info.Name() == ".env" {
-				foundVal, err = readEnvFile(path, varName)
-				if err != nil {
-					Warn("Error reading .env file:", err)
-					return nil // Continue searching
-				}
-
-				if foundVal != "" {
-					return nil
-				}
-			}
-
-			// Check for config.json files
-			if !info.IsDir() && info.Name() == "config.json" {
-				foundVal, err = readConfigJSON(path, varName)
-				if err != nil {
-					Warn("Error reading config.json file:", err)
-					return nil // Continue searching
-				}
-				if foundVal != "" {
-					return nil
-				}
-			}
-			return nil
-		})
-
-		// If the variable was found during the walk, return it
-		if err != nil && err.Error() == "found" {
-			Info("Found environment variable '" + varName + "' = " + foundVal + "\n")
-			foundEnvVar = map[string]string{varName: foundVal}
-			return foundVal, nil
-		}
-	}
-
-	return "", fmt.Errorf("environment variable " + varName + " not found")
-}
-
-func getCurrentDir(level int) string {
-	dir, _ := os.Getwd() // Ignore error; default to current directory
-	for i := 0; i < abs(level); i++ {
-		if level > 0 {
-			dir = filepath.Join(dir, "..") // Move up
-		} else {
-			files, _ := os.ReadDir(dir) // Ignore error; default to empty slice
-			if len(files) > 0 {
-				dir = filepath.Join(dir, files[0].Name()) // Move down (choose first subdirectory)
-			}
-		}
-	}
-	return dir
-}
-
-// readEnvFile reads a specific variable from a .env file
-func readEnvFile(filename, varName string) (string, error) {
-	file, err := os.Open(filename)
-	FailError(err, "")
-
-	defer file.Close()
-
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		line := scanner.Text()
-		if strings.HasPrefix(line, varName+"=") {
-			return strings.TrimPrefix(line, varName+"="), nil
-		}
-	}
-	if err := scanner.Err(); err != nil {
-		return "", err
-	}
-
-	return "", nil // Variable not found
-}
-
-// readConfigJSON reads a specific variable from a config.json file
-func readConfigJSON(filename, varName string) (string, error) {
-	data, err := os.ReadFile(filename)
-	FailError(err, "")
-
-	var configMap map[string]interface{}
-	err = json.Unmarshal(data, &configMap)
-	FailError(err, "")
-
-	if val, ok := configMap[varName].(string); ok {
-		return val, nil
-	}
-
-	return "", nil // Variable not found or not a string
-}
-
-func abs(n int) int {
-	if n < 0 {
-		return -n
-	}
-	return n
 }
 
 // HealthHandler returns an HTTP handler function for the health check endpoint.
