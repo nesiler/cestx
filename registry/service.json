@@ -1,11 +1,11 @@
 {
-  "id": "service1",
-  "name": "Service1",
-  "address": "127.0.0.1",
-  "port": 8080,
+  "id": "registry",
+  "name": "Registry",
+  "address": "",
+  "port": 4099,
   "healthCheck": {
     "endpoint": "/health",
-    "interval": "10s",
-    "timeout": "1s"
+    "interval": "30s",
+    "timeout": "5s"
   }
 }

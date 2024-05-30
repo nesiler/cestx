@@ -1,0 +1,11 @@
+{
+  "id": "redis",
+  "name": "Redis",
+  "address": "",
+  "port": 4060,
+  "healthCheck": {
+    "endpoint": "/health",
+    "interval": "30s",
+    "timeout": "5s"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "id": "machine-s",
+  "name": "Machine",
+  "address": "",
+  "port": 4068,
+  "healthCheck": {
+    "endpoint": "/health",
+    "interval": "30s",
+    "timeout": "5s"
+  }
+}

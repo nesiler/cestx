@@ -1,0 +1,11 @@
+{
+  "id": "rabbitmq",
+  "name": "RabbitMQ",
+  "address": "",
+  "port": 4062,
+  "healthCheck": {
+    "endpoint": "/health",
+    "interval": "30s",
+    "timeout": "5s"
+  }
+}

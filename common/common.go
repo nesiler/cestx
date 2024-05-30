@@ -26,8 +26,11 @@ var (
 		color.New(color.FgHiRed).Add(color.Bold).Add(color.BgBlack).Println(msg)
 		os.Exit(1) // Terminate the program
 	}
-	Ok          = newlinePrintfFunc(color.New(color.FgHiGreen).PrintfFunc())
-	foundEnvVar map[string]string
+	Ok              = newlinePrintfFunc(color.New(color.FgHiGreen).PrintfFunc())
+	TELEGRAM_TOKEN  string
+	CHAT_ID         string
+	PYTHON_API_HOST string
+	foundEnvVar     map[string]string
 )
 
 func newlinePrintfFunc(f func(format string, a ...interface{})) func(format string, a ...interface{}) {
@@ -58,13 +61,13 @@ func SendMessageToTelegram(message string) {
 	FailError(err, "Error marshalling JSON data: %v\n")
 
 	// Get the Python API host from environment variables
-	apiHost, err := FindEnvVar("PYTHON_API_HOST")
-	if err != nil {
-		Fatal("PYTHON_API_HOST environment variable not set\n")
+	if PYTHON_API_HOST == "" {
+		PYTHON_API_HOST, err = FindEnvVar("PYTHON_API_HOST")
+		FailError(err, "Error finding PYTHON_API_HOST: %v\n")
 	}
 
 	// Send the POST request to the Python API
-	resp, err := http.Post("http://"+apiHost+"/send", "application/json", bytes.NewBuffer(jsonData))
+	resp, err := http.Post("http://"+PYTHON_API_HOST+"/send", "application/json", bytes.NewBuffer(jsonData))
 	FailError(err, "send message error: %v\n")
 	defer resp.Body.Close()
 
@@ -93,10 +96,8 @@ func RegisterService(jsonData []byte) {
 	FailError(err, "Error marshalling JSON data: %v\n")
 
 	// Get the registry host from environment variables
-	registryHost := os.Getenv("REGISTRY_HOST")
-	if registryHost == "" {
-		Fatal("REGISTRY_HOST environment variable not set\n")
-	}
+	registryHost, err := FindEnvVar("REGISTRY_HOST")
+	FailError(err, "Error finding REGISTRY_HOST: %v\n")
 
 	// Send the registration request to the registry
 	resp, err := http.Post("http://"+registryHost+"/register", "application/json", bytes.NewBuffer(updatedJsonData))
@@ -125,8 +126,9 @@ func FindEnvVar(varName string) (string, error) {
 
 	// 2. Check .env and config.json files recursively (2 levels up and down)
 	Warn("\nSearching for environment variable '" + varName + "' in .env and config.json files...\n")
-	// Info("\nCurrent directory: ", getCurrentDir(0))
+	Info("\nCurrent directory: ", getCurrentDir(0))
 	var foundVal string
+
 	for level := -2; level <= 2; level++ {
 		startDir := getCurrentDir(level)
 		err := filepath.Walk(startDir, func(path string, info os.FileInfo, err error) error {
@@ -144,8 +146,9 @@ func FindEnvVar(varName string) (string, error) {
 					Warn("Error reading .env file:", err)
 					return nil // Continue searching
 				}
+
 				if foundVal != "" {
-					return Err("found") // Signal that the variable was found
+					return nil
 				}
 			}
 
@@ -157,7 +160,7 @@ func FindEnvVar(varName string) (string, error) {
 					return nil // Continue searching
 				}
 				if foundVal != "" {
-					return Err("found") // Signal that the variable was found
+					return nil
 				}
 			}
 			return nil
