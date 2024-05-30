@@ -1,21 +1,23 @@
 {
-    "externalServices": {
-      "redis": {
-        "host": "192.168.4.60",
-        "port": 6379
-      },
-      "postgresql": {
-        "host": "192.168.4.61",
-        "port": 5432,
-        "user": "postgres",
-        "password": "postgres",
-        "dbname": "postgres"
-      },
-      "rabbitmq": {
-        "host": "192.168.4.62",
-        "port": 5672,
-        "user": "admin",
-        "password": "password"
-      }
-    }
+  "registry": {
+    "host": "192.168.4.63",
+    "port": 3434
+  },
+  "redis": {
+    "host": "192.168.4.60",
+    "port": 6379
+  },
+  "postgresql": {
+    "host": "192.168.4.61",
+    "port": 5432,
+    "user": "postgres",
+    "password": "postgres",
+    "dbname": "postgres"
+  },
+  "rabbitmq": {
+    "host": "192.168.4.62",
+    "port": 5672,
+    "user": "admin",
+    "password": "password"
   }
+}

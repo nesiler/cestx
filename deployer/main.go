@@ -13,7 +13,7 @@ import (
 func readInventory(filePath string) ([]string, error) {
 	cfg, err := ini.Load(filePath)
 	if err != nil {
-		return nil, common.Fatal("error loading inventory: %v", err)
+		return nil, common.Err("error reading inventory file: %v", err)
 	}
 
 	hosts := []string{}
@@ -31,6 +31,16 @@ func readInventory(filePath string) ([]string, error) {
 	return hosts, nil
 }
 
+func checkSSHKeyExported(hosts []string) bool {
+	for _, host := range hosts {
+		cmd := exec.Command("ansible", host, "-m", "ping")
+		if err := cmd.Run(); err != nil {
+			return false
+		}
+	}
+	return true
+}
+
 func Deploy(config *Config, serviceName string) error {
 	cmd := exec.Command("ansible-playbook", "-i", config.AnsiblePath+"/inventory.ini", config.AnsiblePath+"/deploy.yml", "-e", "service="+serviceName, "--private-key", os.Getenv("HOME")+"/.ssh/master")
 	cmd.Stdout = log.Writer()
@@ -46,15 +56,17 @@ func main() {
 		common.Fatal("Error reading inventory: %v", err)
 	}
 
-	if err := setupSSHKeysForHosts("master", "root", hosts); err != nil {
-		common.Fatal("Error setting up SSH keys: %v", err)
+	if !checkSSHKeyExported(hosts) {
+		if err := setupSSHKeysForHosts("master", "root", hosts); err != nil {
+			common.Fatal("Error setting up SSH keys: %v", err)
+		}
+	} else {
+		common.Ok("SSH keys already exported to all hosts\n")
 	}
 
 	// Load configuration
 	config, err := LoadConfig("config.json")
-	if err != nil {
-		log.Fatalf("Error loading config: %v", err)
-	}
+	common.Err("Error loading configuration: %v\n", err)
 
 	// Initialize GitHub client
 	client := NewGitHubClient(config.GitHubToken)
@@ -65,31 +77,34 @@ func main() {
 	for {
 		commit, err := client.GetLatestCommit(config.RepoOwner, config.RepoName)
 		if err != nil {
-			common.Err("Error getting latest commit: %v", err)
+			common.Warn("Error getting latest commit: %v\n", err)
 			time.Sleep(time.Second * 10)
 			continue
 		}
 
 		if commit != latestCommit {
-			log.Printf("New commit detected: %s", commit)
-			// Send message to telegram with common package
+			common.Ok("New commit detected: %s\n", commit)
+			common.SendMessageToTelegram("New commit detected: " + commit)
 			latestCommit = commit
 			err := client.PullLatest(config.RepoPath)
 			if err != nil {
-				log.Printf("Error pulling latest changes: %v", err)
+				common.Warn("Error pulling latest changes: %v\n", err)
 				continue
 			}
 
 			changedDirs, err := client.GetChangedDirs(config.RepoPath, latestCommit)
 			if err != nil {
-				log.Printf("Error getting changed directories: %v", err)
+				common.Warn("Error getting changed directories: %v\n", err)
 				continue
 			}
 
 			for _, dir := range changedDirs {
 				err := Deploy(config, dir)
 				if err != nil {
-					log.Printf("Error deploying %s: %v", dir, err)
+					common.Warn("Error deploying %s: %v\n", dir, err)
+				} else {
+					common.Head("Successfully deployed: %s\n", dir)
+					common.SendMessageToTelegram("Successfully deployed: " + dir)
 				}
 			}
 		}

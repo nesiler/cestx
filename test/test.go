@@ -21,7 +21,7 @@ func serviceTest() {
 	http.HandleFunc("/health", common.HealthHandler())
 	ip, err := common.ExternalIP()
 	if err != nil {
-		common.Err(os.Stderr, "Error getting external IP address: %v\n", err)
+		common.Err("Error getting external IP: %v\n", err)
 	}
 
 	common.Info("Health check service running on http://%s:3333/health\n", ip)
@@ -44,7 +44,6 @@ func telegramTest() {
 	for i := 0; i < 5; i++ {
 		message := time.Now().Format("2006-01-02 15:04:05")
 		common.SendMessageToTelegram(message)
-
 		// wait for 1 second
 		time.Sleep(100 * time.Microsecond)
 	}
@@ -53,5 +52,14 @@ func telegramTest() {
 func main() {
 	// serviceTest()
 	// envFinderTest()
-	telegramTest()
+	// // telegramTest()
+	// keyPath := fmt.Sprintf("%s/.ssh/%s", os.Getenv("HOME"), "master")
+	// if _, err := os.Stat(keyPath); os.IsNotExist(err) {
+	// 	// print error message
+	// 	fmt.Println("SSH key does not exist")
+	// }
+	// println(keyPath)
+
+	ip := "127.0.0.1"
+	common.Info("Health check service running on http://%s:3333/health\n", ip)
 }

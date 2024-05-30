@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -17,19 +16,38 @@ import (
 )
 
 var (
-	Head  = color.New(color.FgHiMagenta).Add(color.Bold).Add(color.Underline).Add(color.BgHiWhite).PrintlnFunc()
-	Out   = color.New(color.FgHiWhite).PrintlnFunc()
-	Info  = color.New(color.FgHiCyan).PrintlnFunc()
-	Warn  = color.New(color.FgHiYellow).Add(color.Bold).PrintlnFunc()
-	Err   = color.New(color.FgHiRed).Add(color.Bold).PrintlnFunc()
-	Fatal = func(format string, args ...interface{}) error {
+	Head  = newlinePrintfFunc(color.New(color.FgHiMagenta).Add(color.Bold).Add(color.Underline).Add(color.BgHiWhite).PrintfFunc())
+	Out   = newlinePrintfFunc(color.New(color.FgHiWhite).PrintfFunc())
+	Info  = newlinePrintfFunc(color.New(color.FgCyan).PrintfFunc())
+	Warn  = newlinePrintfFunc(color.New(color.FgHiYellow).Add(color.Bold).PrintfFunc())
+	Err   = errorPrintfFunc(color.New(color.FgHiRed).Add(color.Bold).PrintfFunc())
+	Fatal = func(format string, args ...interface{}) {
 		msg := fmt.Sprintf(format, args...)
-		color.New(color.FgHiRed).Add(color.Bold).Println(msg)
-		return fmt.Errorf(msg) // Return a formatted error
+		color.New(color.FgHiRed).Add(color.Bold).Add(color.BgBlack).Println(msg)
+		os.Exit(1) // Terminate the program
 	}
-	Ok          = color.New(color.FgHiGreen).PrintlnFunc()
+	Ok          = newlinePrintfFunc(color.New(color.FgHiGreen).PrintfFunc())
 	foundEnvVar map[string]string
 )
+
+func newlinePrintfFunc(f func(format string, a ...interface{})) func(format string, a ...interface{}) {
+	return func(format string, a ...interface{}) {
+		f(format+"\n", a...)
+	}
+}
+
+func errorPrintfFunc(f func(format string, a ...interface{})) func(format string, a ...interface{}) error {
+	return func(format string, a ...interface{}) error {
+		f(format+"\n", a...)
+		return fmt.Errorf(format, a...)
+	}
+}
+
+func FailError(err error, format string, args ...interface{}) {
+	if err != nil {
+		Fatal(format, err, args[0])
+	}
+}
 
 // SendMessageToChat sends a message to the chat using the Python API.
 func SendMessageToTelegram(message string) {
@@ -37,9 +55,7 @@ func SendMessageToTelegram(message string) {
 	// Create the JSON payload
 	payload := map[string]string{"message": message}
 	jsonData, err := json.Marshal(payload)
-	if err != nil {
-		Fatal("Error marshalling JSON data: %v\n", err)
-	}
+	FailError(err, "Error marshalling JSON data: %v\n")
 
 	// Get the Python API host from environment variables
 	apiHost, err := FindEnvVar("PYTHON_API_HOST")
@@ -49,9 +65,7 @@ func SendMessageToTelegram(message string) {
 
 	// Send the POST request to the Python API
 	resp, err := http.Post("http://"+apiHost+"/send", "application/json", bytes.NewBuffer(jsonData))
-	if err != nil {
-		Fatal("Error sending message: %v\n", err)
-	}
+	FailError(err, "send message error: %v\n")
 	defer resp.Body.Close()
 
 	// Check for success response
@@ -64,25 +78,19 @@ func SendMessageToTelegram(message string) {
 func RegisterService(jsonData []byte) {
 	var service map[string]interface{}
 	err := json.Unmarshal(jsonData, &service)
-	if err != nil {
-		Fatal("Error unmarshalling JSON data: %v\n", err)
-	}
+	FailError(err, "Error unmarshalling JSON data: %v\n")
 
 	// Check if the service JSON has an IP address, if not get it manually
 	address, ok := service["address"].(string)
 	if !ok || strings.TrimSpace(address) == "" {
 		ip, err := ExternalIP()
-		if err != nil {
-			Fatal("Error getting external IP address: %v\n", err)
-		}
+		FailError(err, "Error getting external IP: %v\n")
 		service["address"] = ip
 	}
 
 	// Marshal the updated service JSON data
 	updatedJsonData, err := json.Marshal(service)
-	if err != nil {
-		Fatal("Error marshalling updated JSON data: %v\n", err)
-	}
+	FailError(err, "Error marshalling JSON data: %v\n")
 
 	// Get the registry host from environment variables
 	registryHost := os.Getenv("REGISTRY_HOST")
@@ -92,9 +100,8 @@ func RegisterService(jsonData []byte) {
 
 	// Send the registration request to the registry
 	resp, err := http.Post("http://"+registryHost+"/register", "application/json", bytes.NewBuffer(updatedJsonData))
-	if err != nil {
-		Fatal("Error sending registration request: %v\n", err)
-	}
+	FailError(err, "")
+
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
@@ -117,15 +124,13 @@ func FindEnvVar(varName string) (string, error) {
 	}
 
 	// 2. Check .env and config.json files recursively (2 levels up and down)
-	Info("Searching for environment variable '" + varName + "' in .env and config.json files...\n")
-	Info("Current directory: ", getCurrentDir(0))
+	Warn("\nSearching for environment variable '" + varName + "' in .env and config.json files...\n")
+	// Info("\nCurrent directory: ", getCurrentDir(0))
 	var foundVal string
 	for level := -2; level <= 2; level++ {
 		startDir := getCurrentDir(level)
 		err := filepath.Walk(startDir, func(path string, info os.FileInfo, err error) error {
-			if err != nil {
-				return err
-			}
+			FailError(err, "")
 
 			// Skip the starting directory itself
 			if path == startDir {
@@ -140,7 +145,7 @@ func FindEnvVar(varName string) (string, error) {
 					return nil // Continue searching
 				}
 				if foundVal != "" {
-					return fmt.Errorf("found") // Signal that the variable was found
+					return Err("found") // Signal that the variable was found
 				}
 			}
 
@@ -152,7 +157,7 @@ func FindEnvVar(varName string) (string, error) {
 					return nil // Continue searching
 				}
 				if foundVal != "" {
-					return fmt.Errorf("found") // Signal that the variable was found
+					return Err("found") // Signal that the variable was found
 				}
 			}
 			return nil
@@ -187,9 +192,8 @@ func getCurrentDir(level int) string {
 // readEnvFile reads a specific variable from a .env file
 func readEnvFile(filename, varName string) (string, error) {
 	file, err := os.Open(filename)
-	if err != nil {
-		return "", err
-	}
+	FailError(err, "")
+
 	defer file.Close()
 
 	scanner := bufio.NewScanner(file)
@@ -209,15 +213,11 @@ func readEnvFile(filename, varName string) (string, error) {
 // readConfigJSON reads a specific variable from a config.json file
 func readConfigJSON(filename, varName string) (string, error) {
 	data, err := os.ReadFile(filename)
-	if err != nil {
-		return "", err
-	}
+	FailError(err, "")
 
 	var configMap map[string]interface{}
 	err = json.Unmarshal(data, &configMap)
-	if err != nil {
-		return "", err
-	}
+	FailError(err, "")
 
 	if val, ok := configMap[varName].(string); ok {
 		return val, nil
@@ -243,9 +243,8 @@ func HealthHandler() http.HandlerFunc {
 
 func ExternalIP() (string, error) {
 	ifaces, err := net.Interfaces()
-	if err != nil {
-		return "", Fatal("Error getting network interfaces: %v\n", err)
-	}
+	FailError(err, "Interfaces error: %v\n")
+
 	for _, iface := range ifaces {
 		if iface.Flags&net.FlagUp == 0 {
 			continue // interface down
@@ -254,9 +253,8 @@ func ExternalIP() (string, error) {
 			continue // loopback interface
 		}
 		addrs, err := iface.Addrs()
-		if err != nil {
-			return "", Fatal("Error getting addresses for interface %v: %v\n", iface.Name, err)
-		}
+		FailError(err, "")
+
 		for _, addr := range addrs {
 			var ip net.IP
 			switch v := addr.(type) {
@@ -275,5 +273,5 @@ func ExternalIP() (string, error) {
 			return ip.String(), nil
 		}
 	}
-	return "", Fatal("Error getting external IP address: %v\n", errors.New("no IP address found"))
+	return "", Err("No network connection found")
 }

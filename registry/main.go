@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -55,9 +56,7 @@ func main() {
 	}
 
 	err = json.Unmarshal(configFile, &configData)
-	if err != nil {
-		common.Fatal("Error parsing config file: %v\n", err)
-	}
+	common.FailError(err, "Error parsing config file")
 
 	// Initialize Redis client using config data
 	redisConfig, ok := configData.ExternalServices["redis"]
@@ -76,8 +75,11 @@ func main() {
 	// Start the cron scheduler
 	c.Start()
 
-	common.Info("Server started on 192.168.4.63:3434")
-	log.Fatal(http.ListenAndServe("192.168.4.63:3434", nil))
+	currentHost, err := common.ExternalIP()
+	common.FailError(err)
+
+	common.Info("Server started on: ", currentHost)
+	log.Fatal(http.ListenAndServe(fmt.Sprintf(currentHost, "3434"), nil))
 }
 
 func registerServiceHandler(w http.ResponseWriter, r *http.Request) {
