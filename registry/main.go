@@ -142,7 +142,7 @@ func scheduleHealthCheck(service common.Service) {
 	})
 }
 
-func monitorService(service common.Service) { 
+func monitorService(service common.Service) {
 	resp, err := http.Get("http://" + service.Address + ":" + strconv.Itoa(service.Port) + service.HealthCheck.Endpoint)
 	status := "unhealthy"
 	if err == nil && resp.StatusCode == http.StatusOK {

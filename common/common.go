@@ -7,7 +7,6 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/fatih/color"
@@ -91,40 +90,36 @@ func SendMessageToTelegram(message string) {
 	}
 }
 
-// RegisterService sends a registration request to the registry with the given JSON data.
-func RegisterService(jsonData []byte) {
-	var service map[string]interface{}
+func JsonToService(jsonData []byte) (*Service, error) {
+	var service Service
 	err := json.Unmarshal(jsonData, &service)
-	FailError(err, "Error unmarshalling JSON data: %v\n")
-
-	// Check if the service JSON has an IP address, if not get it manually
-	address, ok := service["address"].(string)
-	if !ok || strings.TrimSpace(address) == "" {
-		ip, err := ExternalIP()
-		FailError(err, "Error getting external IP: %v\n")
-		service["address"] = ip
+	if err != nil {
+		return nil, fmt.Errorf("error unmarshalling JSON data: %v", err)
 	}
+	return &service, nil
+}
 
-	// Marshal the updated service JSON data
+func RegisterService(service *Service) error {
+
+	// Marshal the updated service data
 	updatedJsonData, err := json.Marshal(service)
-	FailError(err, "Error marshalling JSON data: %v\n")
+	FailError(err, "Error marshalling Service JSON data: %v\n")
 
-	// chec if the registry host is set
+	// Check if the registry host is set
 	if REGISTRY_HOST == "" {
-		Fatal("Error finding REGISTRY_HOST\n")
+		Fatal("Error finding REGISTRY_HOST: %v\n")
 	}
 
 	// Send the registration request to the registry
 	resp, err := http.Post("http://"+REGISTRY_HOST+":3434/register", "application/json", bytes.NewBuffer(updatedJsonData))
 	FailError(err, "")
-
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		Fatal("Failed to register service, received status code: %d\n", resp.StatusCode)
 	}
 
-	Ok("Service registered successfully")
+	return nil
 }
 
 // HealthHandler returns an HTTP handler function for the health check endpoint.
