@@ -45,7 +45,7 @@ func readInventory(filePath string) ([]string, error) {
 
 func checkSSHKeyExported(hosts []string) bool {
 	for _, host := range hosts {
-		cmd := exec.Command("ansible", host, "-m", "ping")
+		cmd := exec.Command("ansible", host, "-m", "ping", "--private-key", os.Getenv("HOME")+"/.ssh/master", "-u", "root")
 		if err := cmd.Run(); err != nil {
 			return false
 		}
