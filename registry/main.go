@@ -14,20 +14,6 @@ import (
 	"github.com/robfig/cron/v3"
 )
 
-type Service struct {
-	ID          string      `json:"id"`
-	Name        string      `json:"name"`
-	Address     string      `json:"address"`
-	Port        int         `json:"port"`
-	HealthCheck HealthCheck `json:"healthCheck"`
-}
-
-type HealthCheck struct {
-	Endpoint string `json:"endpoint"`
-	Interval string `json:"interval"`
-	Timeout  string `json:"timeout"`
-}
-
 type Config struct {
 	ExternalServices map[string]ServiceInfo `json:"externalServices"`
 }
@@ -87,7 +73,7 @@ func registerServiceHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var service Service
+	var service common.Service
 	err := json.NewDecoder(r.Body).Decode(&service)
 	if err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
@@ -99,18 +85,14 @@ func registerServiceHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func registerService(service Service) {
+func registerService(service common.Service) {
 	common.Info("Registering service: %s", service.Name)
 
 	serviceData, err := json.Marshal(service)
-	if err != nil {
-		common.Fatal("Error serializing service data: %v\n", err)
-	}
+	common.FailError(err, "")
 
 	err = rdb.Set(ctx, "service:"+service.ID, serviceData, 0).Err()
-	if err != nil {
-		common.Fatal("Error storing service data in Redis: %v\n", err)
-	}
+	common.FailError(err, "Redis error: %v")
 }
 
 func getServiceHandler(w http.ResponseWriter, r *http.Request) {
@@ -148,7 +130,7 @@ func getConfigHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(serviceInfoData)
 }
 
-func scheduleHealthCheck(service Service) {
+func scheduleHealthCheck(service common.Service) {
 	interval, err := time.ParseDuration(service.HealthCheck.Interval)
 	if err != nil {
 		common.Fatal("Error parsing interval: %v\n", err)
@@ -160,7 +142,7 @@ func scheduleHealthCheck(service Service) {
 	})
 }
 
-func monitorService(service Service) {
+func monitorService(service common.Service) { 
 	resp, err := http.Get("http://" + service.Address + ":" + strconv.Itoa(service.Port) + service.HealthCheck.Endpoint)
 	status := "unhealthy"
 	if err == nil && resp.StatusCode == http.StatusOK {

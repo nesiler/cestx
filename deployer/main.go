@@ -61,7 +61,7 @@ func Deploy(config *Config, serviceName string) error {
 }
 
 func main() {
-	godotenv.Load(".env")
+	godotenv.Load("../.env")
 	inventoryPath := "./ansible/inventory.yaml"
 	hosts, err := readInventory(inventoryPath)
 	if err != nil {

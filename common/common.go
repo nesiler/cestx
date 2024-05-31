@@ -29,8 +29,21 @@ var (
 	CHAT_ID         string
 	PYTHON_API_HOST string
 	REGISTRY_HOST   string
-	foundEnvVar     map[string]string
 )
+
+type Service struct {
+	ID          string      `json:"id"`
+	Name        string      `json:"name"`
+	Address     string      `json:"address"`
+	Port        int         `json:"port"`
+	HealthCheck HealthCheck `json:"healthCheck"`
+}
+
+type HealthCheck struct {
+	Endpoint string `json:"endpoint"`
+	Interval string `json:"interval"`
+	Timeout  string `json:"timeout"`
+}
 
 func newlinePrintfFunc(f func(format string, a ...interface{})) func(format string, a ...interface{}) {
 	return func(format string, a ...interface{}) {
@@ -68,7 +81,7 @@ func SendMessageToTelegram(message string) {
 	}
 
 	// Send the POST request to the Python API
-	resp, err := http.Post("http://"+PYTHON_API_HOST+"/send", "application/json", bytes.NewBuffer(jsonData))
+	resp, err := http.Post("http://"+PYTHON_API_HOST+":5005/send", "application/json", bytes.NewBuffer(jsonData))
 	FailError(err, "send message error: %v\n")
 	defer resp.Body.Close()
 
@@ -98,11 +111,11 @@ func RegisterService(jsonData []byte) {
 
 	// chec if the registry host is set
 	if REGISTRY_HOST == "" {
-		Fatal("Error finding REGISTRY_HOST: %v\n")
+		Fatal("Error finding REGISTRY_HOST\n")
 	}
 
 	// Send the registration request to the registry
-	resp, err := http.Post("http://"+REGISTRY_HOST+"/register", "application/json", bytes.NewBuffer(updatedJsonData))
+	resp, err := http.Post("http://"+REGISTRY_HOST+":3434/register", "application/json", bytes.NewBuffer(updatedJsonData))
 	FailError(err, "")
 
 	defer resp.Body.Close()
