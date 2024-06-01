@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os/exec"
 	"strings"
 
@@ -36,9 +37,13 @@ func (c *GitHubClient) GetLatestCommit(owner, repo string) (string, error) {
 	return *commits[0].SHA, nil
 }
 
-func (c *GitHubClient) PullLatest(repoPath string) error {
+func (client *GitHubClient) PullLatest(repoPath string) error {
 	cmd := exec.Command("git", "-C", repoPath, "pull")
-	return cmd.Run()
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("failed to pull latest changes: %v, output: %s", err, string(output))
+	}
+	return nil
 }
 
 func (c *GitHubClient) GetChangedDirs(repoPath, latestCommit string) ([]string, error) {

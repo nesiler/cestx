@@ -458,6 +458,7 @@ xcuserdata/
 # End of https://www.toptal.com/developers/gitignore/api/python,go,goland,intellij,macos,xcode,visualstudiocode,dotenv
 
 # go output files
+common/common
 deployer/deployer
 template-s/template-s
 taskmaster-s/taskmaster-s
