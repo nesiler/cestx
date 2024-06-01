@@ -69,7 +69,7 @@ func main() {
 	}
 
 	if !checkSSHKeyExported(hosts) {
-		if err := setupSSHKeysForHosts("master", "root", hosts); err != nil {
+		if err := setupSSHKeysForHosts("master", hosts); err != nil {
 			common.Fatal("Error setting up SSH keys: %v", err)
 		}
 	} else {
