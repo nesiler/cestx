@@ -456,3 +456,12 @@ xcuserdata/
 **/xcshareddata/WorkspaceSettings.xcsettings
 
 # End of https://www.toptal.com/developers/gitignore/api/python,go,goland,intellij,macos,xcode,visualstudiocode,dotenv
+
+# go output files
+deployer/deployer
+template-s/template-s
+taskmaster-s/taskmaster-s
+registry-s/registry-s
+machine-s/machine-s
+logger-s/logger-s
+dynoxy-s/dynoxy-s
