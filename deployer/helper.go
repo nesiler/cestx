@@ -72,23 +72,21 @@ func exportSSHKeyToHost(keyName, identifierType, identifier string) error {
 	return nil
 }
 
-func setupSSHKeysForHosts(keyName string, hosts map[string]string) error {
+func setupSSHKeyForHost(keyName, hostName, ip string) error {
 	if err := ensureSSHKeyExists(keyName); err != nil {
 		return common.Err("failed to create SSH key: %v", err)
 	}
 
-	for name, ip := range hosts {
-		common.Info("Exporting SSH key to host %s\n", name)
-		err := exportSSHKeyToHost(keyName, "ip", ip)
+	common.Info("Exporting SSH key to host %s\n", hostName)
+	err := exportSSHKeyToHost(keyName, "ip", ip)
+	if err != nil {
+		common.Warn("Failed to export SSH key using IP for host %s: %v, trying hostname\n", hostName, err)
+		err = exportSSHKeyToHost(keyName, "hostname", hostName)
 		if err != nil {
-			common.Warn("Failed to export SSH key using IP for host %s: %v, trying hostname\n", name, err)
-			err = exportSSHKeyToHost(keyName, "hostname", name)
-			if err != nil {
-				return common.Err("failed to export SSH key to host %s using both IP and hostname: %v", name, err)
-			}
-		} else {
-			common.Ok("Successfully exported SSH key to host %s using IP: %s\n", name, ip)
+			return common.Err("failed to export SSH key to host %s using both IP and hostname: %v", hostName, err)
 		}
+	} else {
+		common.Ok("Successfully exported SSH key to host %s using IP: %s\n", hostName, ip)
 	}
 
 	return nil

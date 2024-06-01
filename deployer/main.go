@@ -43,16 +43,10 @@ func readInventory(filePath string) (map[string]string, error) {
 	return hosts, nil
 }
 
-func checkSSHKeyExported(hosts map[string]string) bool {
-	for name := range hosts {
-		common.Info("Checking SSH key for host %s\n", name)
-		cmd := exec.Command("ansible", name, "-m", "ping", "-i", "ansible/inventory.yaml", "--private-key", os.Getenv("HOME")+"/.ssh/master", "-u", "root")
-		if err := cmd.Run(); err != nil {
-			common.Warn("Error pinging host %s: %v\n", name, err)
-			return false
-		}
-	}
-	return true
+func checkSSHKeyExported(host string) bool {
+	common.Info("Checking SSH key for host %s\n", host)
+	cmd := exec.Command("ansible", host, "-m", "ping", "-i", "ansible/inventory.yaml", "--private-key", os.Getenv("HOME")+"/.ssh/master", "-u", "root")
+	return cmd.Run() == nil
 }
 
 func Deploy(config *Config, serviceName string) error {
@@ -71,12 +65,15 @@ func main() {
 		common.Fatal("Error reading inventory: %v", err)
 	}
 
-	if !checkSSHKeyExported(hosts) {
-		if err := setupSSHKeysForHosts("master", hosts); err != nil {
-			common.Fatal("Error setting up SSH keys: %v", err)
+	for name, ip := range hosts {
+		if !checkSSHKeyExported(name) {
+			common.Info("Setting up SSH key for host %s\n", name)
+			if err := setupSSHKeyForHost("master", name, ip); err != nil {
+				common.Fatal("Error setting up SSH keys for host %s: %v", name, err)
+			}
+		} else {
+			common.Ok("SSH key already exported to host %s\n", name)
 		}
-	} else {
-		common.Ok("SSH keys already exported to all hosts\n")
 	}
 
 	// Load configuration
