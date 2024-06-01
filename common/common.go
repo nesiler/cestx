@@ -13,7 +13,7 @@ import (
 )
 
 var (
-	Head  = newlinePrintfFunc(color.New(color.FgHiMagenta).Add(color.Bold).Add(color.Underline).Add(color.BgHiWhite).PrintfFunc())
+	Head  = color.New(color.FgHiMagenta).Add(color.Bold).Add(color.Underline).Add(color.BgHiWhite).PrintfFunc()
 	Out   = newlinePrintfFunc(color.New(color.FgHiWhite).PrintfFunc())
 	Info  = newlinePrintfFunc(color.New(color.FgCyan).PrintfFunc())
 	Warn  = newlinePrintfFunc(color.New(color.FgHiYellow).Add(color.Bold).PrintfFunc())

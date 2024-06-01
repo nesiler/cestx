@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 	"os/exec"
@@ -45,27 +45,42 @@ func exportSSHKeyToHost(keyName, identifierType, identifier string) error {
 	}
 
 	var url string
-	var reqBody string
+	var reqBody map[string]string
 
 	switch identifierType {
 	case "ip":
 		url = fmt.Sprintf("http://%s:5252/ssh", proxmoxHost)
-		reqBody = fmt.Sprintf(`{"ip": "%s", "key": "%s"}`, identifier, key)
+		reqBody = map[string]string{"ip": identifier, "key": string(key)}
 	case "hostname":
 		url = fmt.Sprintf("http://%s:5252/ssh", proxmoxHost)
-		reqBody = fmt.Sprintf(`{"hostname": "%s", "key": "%s"}`, identifier, key)
+		reqBody = map[string]string{"hostname": identifier, "key": string(key)}
 	default:
 		return fmt.Errorf("invalid identifier type: %s", identifierType)
 	}
 
-	resp, err := http.Post(url, "application/json", bytes.NewBuffer([]byte(reqBody)))
+	jsonReqBody, err := json.Marshal(reqBody)
+	if err != nil {
+		return fmt.Errorf("failed to marshal JSON request body: %v", err)
+	}
+
+	// Print the request body for debugging
+	fmt.Println("Request Body:", string(jsonReqBody))
+
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonReqBody))
+	if err != nil {
+		return fmt.Errorf("failed to create HTTP request: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
 	if err != nil {
 		return fmt.Errorf("failed to send key to proxmox container: %v", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := ioutil.ReadAll(resp.Body)
+		body, _ := io.ReadAll(resp.Body)
 		return fmt.Errorf("unexpected status code: %d, response: %s", resp.StatusCode, string(body))
 	}
 
