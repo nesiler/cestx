@@ -8,7 +8,6 @@ import (
 	"os"
 	"os/exec"
 
-	"github.com/joho/godotenv"
 	"github.com/nesiler/cestx/common"
 )
 
@@ -32,6 +31,64 @@ func LoadConfig(filename string) (*Config, error) {
 	return &config, nil
 }
 
+func exportSSHKeyToHost(keyName, identifierType, identifier string) error {
+	keyPath := fmt.Sprintf("%s/.ssh/%s.pub", os.Getenv("HOME"), keyName)
+	key, err := os.ReadFile(keyPath)
+	if err != nil {
+		return fmt.Errorf("failed to read the key file: %v", err)
+	}
+
+	proxmoxHost := os.Getenv("PROXMOX_HOST")
+	if proxmoxHost == "" {
+		return fmt.Errorf("PROXMOX_HOST is not set")
+	}
+
+	var url string
+	var reqBody string
+
+	switch identifierType {
+	case "ip":
+		url = fmt.Sprintf("http://%s:5252/ssh", proxmoxHost)
+		reqBody = fmt.Sprintf(`{"ip": "%s", "key": "%s"}`, identifier, key)
+	case "hostname":
+		url = fmt.Sprintf("http://%s:5252/ssh", proxmoxHost)
+		reqBody = fmt.Sprintf(`{"hostname": "%s", "key": "%s"}`, identifier, key)
+	default:
+		return fmt.Errorf("invalid identifier type: %s", identifierType)
+	}
+
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer([]byte(reqBody)))
+	if err != nil {
+		return fmt.Errorf("failed to send key to proxmox container: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+	}
+
+	return nil
+}
+
+func setupSSHKeysForHosts(keyName string, hosts map[string]string) error {
+	if err := ensureSSHKeyExists(keyName); err != nil {
+		return common.Err("failed to create SSH key: %v", err)
+	}
+
+	for name, ip := range hosts {
+		err := exportSSHKeyToHost(keyName, "ip", ip)
+		if err != nil {
+			common.Warn("Failed to export SSH key using IP for host %s: %v, trying hostname\n", name, err)
+			err = exportSSHKeyToHost(keyName, "hostname", name)
+			if err != nil {
+				return common.Err("failed to export SSH key to host %s using both IP and hostname: %v", name, err)
+			}
+		}
+	}
+
+	return nil
+}
+
 func ensureSSHKeyExists(keyName string) error {
 	keyPath := fmt.Sprintf("%s/.ssh/%s", os.Getenv("HOME"), keyName)
 	if _, err := os.Stat(keyPath); os.IsNotExist(err) {
@@ -42,49 +99,4 @@ func ensureSSHKeyExists(keyName string) error {
 		return cmd.Run()
 	}
 	return nil
-}
-
-func setupSSHKeysForHosts(keyName string, hosts []string) error {
-	if err := ensureSSHKeyExists(keyName); err != nil {
-		return common.Err("failed to create SSH key: %v", err)
-	}
-
-	for _, host := range hosts {
-		if err := exportSSHKeyToHost(keyName, host); err != nil {
-			return common.Err("failed to export SSH key to host %s: %v", host, err)
-		}
-	}
-
-	return nil
-}
-
-func exportSSHKeyToHost(keyName, identifier string) error {
-	keyPath := fmt.Sprintf("%s/.ssh/%s.pub", os.Getenv("HOME"), keyName)
-	key, err := os.ReadFile(keyPath)
-	common.FailError(err, "failed to read SSH key: %v", keyPath)
-
-	godotenv.Load("../.env")
-	proxmoxHost := os.Getenv("PROXMOX_HOST")
-	if proxmoxHost == "" {
-		return common.Err("PROXMOX_HOST environment variable not set")
-	}
-
-	// Attempt to export using IP address
-	url := fmt.Sprintf("http://%s:5252/ssh", proxmoxHost)
-	reqBody := fmt.Sprintf(`{"ip": "%s", "key": "%s"}`, identifier, key)
-	resp, err := http.Post(url, "application/json", bytes.NewBuffer([]byte(reqBody)))
-	if err == nil && resp.StatusCode == http.StatusOK {
-		return nil
-	}
-
-	// If IP address export fails, attempt to export using hostname
-	reqBody = fmt.Sprintf(`{"hostname": "%s", "key": "%s"}`, identifier, key)
-	resp, err = http.Post(url, "application/json", bytes.NewBuffer([]byte(reqBody)))
-	if err == nil && resp.StatusCode == http.StatusOK {
-		return nil
-	}
-
-	common.FailError(err, "failed to export SSH key to host %s: %v", identifier, err)
-
-	return common.Err("unexpected status code: %d", resp.StatusCode)
 }

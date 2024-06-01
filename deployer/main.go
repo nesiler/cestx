@@ -13,6 +13,7 @@ import (
 
 // Host represents a single host in the inventory.
 type Host struct {
+	Name                     string `yaml:"name"`
 	AnsibleHost              string `yaml:"ansible_host"`
 	AnsibleSSHPrivateKeyFile string `yaml:"ansible_ssh_private_key_file"`
 }
@@ -24,9 +25,8 @@ type Inventory struct {
 	} `yaml:"all"`
 }
 
-// readInventory reads the inventory file and returns a slice of ansible_host values.
-func readInventory(filePath string) ([]string, error) {
-
+// readInventory reads the inventory file and returns a map of hostnames to ansible_host values.
+func readInventory(filePath string) (map[string]string, error) {
 	data, err := os.ReadFile(filePath)
 	common.FailError(err, "error reading inventory file: %v", filePath)
 
@@ -34,19 +34,21 @@ func readInventory(filePath string) ([]string, error) {
 	err = yaml.Unmarshal(data, &inventory)
 	common.FailError(err, "error unmarshalling inventory: %v", filePath)
 
-	hosts := []string{}
+	hosts := make(map[string]string)
 	for name, host := range inventory.All.Hosts {
 		common.Info("Found host %s with IP %s\n", name, host.AnsibleHost)
-		hosts = append(hosts, host.AnsibleHost)
+		hosts[name] = host.AnsibleHost
 	}
 
 	return hosts, nil
 }
 
-func checkSSHKeyExported(hosts []string) bool {
-	for _, host := range hosts {
-		cmd := exec.Command("ansible", host, "-m", "ping", "--private-key", os.Getenv("HOME")+"/.ssh/master", "-u", "root")
+func checkSSHKeyExported(hosts map[string]string) bool {
+	for name := range hosts {
+		common.Info("Checking SSH key for host %s\n", name)
+		cmd := exec.Command("ansible", name, "-m", "ping", "-i", "ansible/inventory.yaml", "--private-key", os.Getenv("HOME")+"/.ssh/master", "-u", "root")
 		if err := cmd.Run(); err != nil {
+			common.Warn("Error pinging host %s: %v\n", name, err)
 			return false
 		}
 	}
@@ -61,6 +63,7 @@ func Deploy(config *Config, serviceName string) error {
 }
 
 func main() {
+	common.Head("--DEPLOYER STARTS--")
 	godotenv.Load("../.env")
 	inventoryPath := "./ansible/inventory.yaml"
 	hosts, err := readInventory(inventoryPath)
