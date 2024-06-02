@@ -55,6 +55,8 @@ func Deploy(config *Config, serviceName string) error {
 	cmd.Stderr = log.Writer()
 	return cmd.Run()
 }
+
+
 func main() {
 	common.Head("--DEPLOYER STARTS--")
 	godotenv.Load("../.env")

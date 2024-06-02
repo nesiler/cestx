@@ -4,6 +4,17 @@
   remote_user: root
   become: yes
   tasks:
+    - name: Check if repository is cloned
+      stat:
+        path: "/home/cestx/.git"
+      register: repo_status
+
+    - name: Clone repository if not present
+      git:
+        repo: "https://github.com/nesiler/CESTX"
+        dest: "/home/cestx"
+      when: not repo_status.stat.exists
+
     - name: Pull latest changes
       git:
         repo: "https://github.com/nesiler/CESTX"
