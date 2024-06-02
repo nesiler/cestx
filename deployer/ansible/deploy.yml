@@ -21,10 +21,27 @@
         dest: "/home/cestx"
         update: yes
 
+    - name: Copy .env file to hosts
+      copy:
+        src: "/home/cestx/.env"
+        dest: "/home/cestx/.env"
+      delegate_to: localhost
+
+    - name: Source environment variables from .env file
+      shell: |
+        set -a
+        source /home/cestx/.env
+        set +a
+      args:
+        executable: /bin/bash
+
     - name: Deploy Service
       shell: |
         cd /home/cestx/{{ service }}
         {{ deploy_command[service] }}
+      environment:
+        REGISTRY_HOST: "{{ lookup('env', 'REGISTRY_HOST') }}"
+        # Add other environment variables if needed
   vars:
     deploy_command:
       redis: "docker compose up -d --force-recreate"

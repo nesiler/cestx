@@ -17,7 +17,7 @@ func main() {
 	serviceFile, err := os.ReadFile("service.json")
 	common.FailError(err, "error reading service file: %v", err)
 	service, err := common.JsonToService(serviceFile)
-	// common.FailError(err, "error converting JSON to Service: %v", err)
+	common.FailError(err, "error converting JSON to Service: %v", err)
 
 	if service.Address == "" {
 		service.Address, err = common.ExternalIP()

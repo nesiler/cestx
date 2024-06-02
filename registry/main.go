@@ -36,10 +36,10 @@ var (
 func main() {
 	// Load configuration file
 	configFile, err := os.ReadFile("config.json")
-	common.FailError(err, "Error reading config file")
+	common.FailError(err, "error reading config file")
 
 	err = json.Unmarshal(configFile, &configData)
-	common.FailError(err, "Error parsing config file")
+	common.FailError(err, "error parsing config file")
 
 	// Initialize Redis client using config data
 	redisConfig, ok := configData.ExternalServices["redis"]
