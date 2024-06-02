@@ -78,10 +78,14 @@ func handleSSHKeysAndServiceChecks(config *Config) {
 		}
 
 		// Check if the service exists and if not, run the setup playbook
-		if !checkServiceExists(name) {
+		if !checkServiceExists(name, map[string]string{"service": name}) {
 			common.Info("Setting up service for host %s\n", name)
-			common.FailError(runAnsiblePlaybook(config.AnsiblePath+"/setup.yaml", name),
-				"Error setting up service for host %s", name)
+
+			// Pass the service name as an extra variable to the playbook
+			err := runAnsiblePlaybook(config.AnsiblePath+"/setup.yml", name, map[string]string{"service": name})
+			if err != nil {
+				common.Err("Error setting up service for host %s: %v", name, err) // Log error instead of failing
+			}
 		}
 	}
 }
