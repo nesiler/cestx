@@ -1,0 +1,75 @@
+---
+- name: Setup Environment and Deploy Service
+  hosts: "{{ service }}"
+  remote_user: root
+  become: yes
+  vars:
+    deploy_command:
+      redis: "docker compose up -d --force-recreate"
+      postgresql: "docker compose up -d --force-recreate"
+      rabbitmq: "docker compose up -d --force-recreate"
+      registry: "go build -o {{ service }} && ./{{ service }}"
+      logging-s: "go build -o {{ service }} && ./{{ service }}"
+      task-s: "go build -o {{ service }} && ./{{ service }}"
+      proxy-s: "go build -o {{ service }} && ./{{ service }}"
+      template-s: "go build -o {{ service }} && ./{{ service }}"
+      machine-s: "go build -o {{ service }} && ./{{ service }}"
+      api-gw: "dotnet run"
+
+  tasks:
+
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+
+    - name: Install required packages
+      apt:
+        name:
+          - golang
+          - git
+          - wget
+          - curl
+          - vim
+          - nano
+        state: present
+
+    - name: Clone repository if not present
+      git:
+        repo: "https://github.com/nesiler/CESTX"
+        dest: "/home/cestx"
+        
+    - name: Copy .env file to hosts
+      copy:
+        src: "/home/cestx/.env"
+        dest: "/home/cestx/.env"
+      delegate_to: localhost
+
+    - name: Source environment variables from .env file
+      shell: |
+        set -a
+        source /home/cestx/.env
+        set +a
+      args:
+        executable: /bin/bash
+        
+    - name: Copy service file
+      template:
+        src: "{{ service }}.service.j2" 
+        dest: "/etc/systemd/system/{{ service }}.service"
+
+    - name: Reload systemd daemon
+      systemd:
+        daemon_reload: true
+        
+    - name: Enable and start service
+      systemd:
+        name: "{{ service }}"
+        enabled: true
+        state: started
+
+    - name: Deploy Service
+      shell: |
+        cd /home/cestx/{{ service }}
+        {{ deploy_command[service] }}
+      environment:
+        REGISTRY_HOST: "{{ lookup('env', 'REGISTRY_HOST') }}"

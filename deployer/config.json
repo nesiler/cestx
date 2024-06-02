@@ -4,5 +4,17 @@
   "repo_name": "CESTX",
   "repo_path": "/home/CESTX",
   "check_interval": 60,
-  "ansible_path": "/home/CESTX/ansible"
+  "ansible_path": "/home/CESTX/deployer/ansible",
+  "service_build_commands": {
+    "registry": "go build -o registry && ./registry",
+    "logger-s": "go build -o logger-s && ./logger-s",
+    "taskmaster-s": "go build -o taskmaster-s && ./taskmaster-s",
+    "dynoxy-s": "go build -o dynoxy-s && ./dynoxy-s",
+    "template-s": "go build -o template-s && ./template-s",
+    "machine-s": "go build -o machine-s && ./machine-s",
+    "api-gw": "dotnet run",
+    "redis": "docker-compose up -d",
+    "postgresql": "docker-compose up -d",
+    "rabbitmq": "docker-compose up -d"
+  }
 }

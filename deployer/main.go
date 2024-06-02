@@ -1,10 +1,8 @@
 package main
 
 import (
-	"log"
+	"encoding/json"
 	"os"
-	"os/exec"
-	"time"
 
 	"github.com/joho/godotenv"
 	"github.com/nesiler/cestx/common"
@@ -25,6 +23,27 @@ type Inventory struct {
 	} `yaml:"all"`
 }
 
+type Config struct {
+	GitHubToken          string            `json:"github_token"`
+	RepoOwner            string            `json:"repo_owner"`
+	RepoName             string            `json:"repo_name"`
+	RepoPath             string            `json:"repo_path"`
+	CheckInterval        int               `json:"check_interval"`
+	AnsiblePath          string            `json:"ansible_path"`
+	ServiceBuildCommands map[string]string `json:"service_build_commands"`
+}
+
+func LoadConfig(filename string) (*Config, error) {
+	data, err := os.ReadFile(filename)
+	common.FailError(err, "error reading config file: %v")
+
+	var config Config
+	err = json.Unmarshal(data, &config)
+	common.FailError(err, "error parsing config file: %v")
+
+	return &config, nil
+}
+
 // readInventory reads the inventory file and returns a map of hostnames to ansible_host values.
 func readInventory(filePath string) (map[string]string, error) {
 	data, err := os.ReadFile(filePath)
@@ -43,88 +62,47 @@ func readInventory(filePath string) (map[string]string, error) {
 	return hosts, nil
 }
 
-func checkSSHKeyExported(host string) bool {
-	common.Info("Checking SSH key for host %s\n", host)
-	cmd := exec.Command("ansible", host, "-m", "ping", "-i", "ansible/inventory.yaml", "--private-key", os.Getenv("HOME")+"/.ssh/master", "-u", "root")
-	return cmd.Run() == nil
-}
+// handleSSHKeysAndServiceChecks handles SSH key setup and service checks
+func handleSSHKeysAndServiceChecks(config *Config) {
+	inventoryPath := config.AnsiblePath + "/inventory.yaml"
+	hosts, err := readInventory(inventoryPath)
+	common.FailError(err, "Error reading inventory: %v")
 
-func Deploy(config *Config, serviceName string) error {
-	cmd := exec.Command("ansible-playbook", "-i", config.AnsiblePath+"/inventory.yaml", config.AnsiblePath+"/deploy.yml", "-e", "service="+serviceName)
-	cmd.Stdout = log.Writer()
-	cmd.Stderr = log.Writer()
-	return cmd.Run()
-}
+	for name, ip := range hosts {
+		// Check if SSH key is exported and if not, export it
+		if !checkSSHKeyExported(name) {
+			common.Info("Setting up SSH key for host %s\n", name)
+			common.FailError(setupSSHKeyForHost("master", name, ip), "Error setting up SSH keys for host %s: %v", name, err)
+		} else {
+			common.Ok("SSH key already exported to host %s\n", name)
+		}
 
+		// Check if the service exists and if not, run the setup playbook
+		if !checkServiceExists(name) {
+			common.Info("Setting up service for host %s\n", name)
+			common.FailError(runAnsiblePlaybook(config.AnsiblePath+"/setup.yml", name),
+				"Error setting up service for host %s", name)
+		}
+	}
+}
 
 func main() {
 	common.Head("--DEPLOYER STARTS--")
 	godotenv.Load("../.env")
-	inventoryPath := "./ansible/inventory.yaml"
-	hosts, err := readInventory(inventoryPath)
-	if err != nil {
-		common.Fatal("Error reading inventory: %v", err)
-	}
+	godotenv.Load(".env")
 
-	for name, ip := range hosts {
-		if !checkSSHKeyExported(name) {
-			common.Info("Setting up SSH key for host %s\n", name)
-			if err := setupSSHKeyForHost("master", name, ip); err != nil {
-				common.Fatal("Error setting up SSH keys for host %s: %v", name, err)
-			}
-		} else {
-			common.Ok("SSH key already exported to host %s\n", name)
-		}
-	}
-
-	// Load configuration
-	config, err := LoadConfig("config.json")
-	common.FailError(err, "Error loading configuration: %v\n", err)
-
-	// Get the Python API host from dotenv
 	common.PYTHON_API_HOST = os.Getenv("PYTHON_API_HOST")
 
-	// Initialize GitHub client
+	// 1. Load configuration
+	config, err := LoadConfig("config.json")
+	common.FailError(err, "Error loading configuration: %v\n")
+
+	// 2. Initialize GitHub client
 	client := NewGitHubClient(config.GitHubToken)
 
-	// Store the latest commit hash
-	var latestCommit string
+	// 3. Setup SSH Keys & Check Service Readiness
+	go handleSSHKeysAndServiceChecks(config) // Run in a separate goroutine
 
-	for {
-		commit, err := client.GetLatestCommit(config.RepoOwner, config.RepoName)
-		if err != nil {
-			common.Warn("Error getting latest commit: %v\n", err)
-			time.Sleep(time.Second * 10)
-			continue
-		}
-
-		if commit != latestCommit {
-			common.Ok("New commit detected: %s\n", commit)
-			common.SendMessageToTelegram("New commit detected: " + commit)
-			latestCommit = commit
-			err := client.PullLatest(config.RepoPath)
-			if err != nil {
-				common.Warn("Error pulling latest changes: %v", err)
-				continue
-			}
-
-			changedDirs, err := client.GetChangedDirs(config.RepoPath, latestCommit)
-			if err != nil {
-				common.Warn("Error getting changed directories: %v", err)
-				continue
-			}
-
-			for _, dir := range changedDirs {
-				err := Deploy(config, dir)
-				if err != nil {
-					common.Warn("Error deploying %s: %v", dir, err)
-				} else {
-					common.Ok("Successfully deployed: %s", dir)
-					common.SendMessageToTelegram("Successfully deployed: " + dir)
-				}
-			}
-		}
-
-		time.Sleep(time.Second * time.Duration(config.CheckInterval))
-	}
+	// 4. Watch for changes and deploy
+	watchForChanges(config, client)
 }

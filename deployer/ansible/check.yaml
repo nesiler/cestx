@@ -1,0 +1,23 @@
+---
+- name: Check Service and Repository Existence
+  hosts: "{{ service }}"
+  remote_user: root
+  become: yes
+
+  tasks:
+    - name: Check if repository is cloned
+      stat:
+        path: "/home/cestx/.git"
+      register: repo_status
+
+    - name: Check if service is running
+      systemd:
+        name: "{{ service }}"
+      register: service_status
+      ignore_errors: true # Don't fail the playbook if the service doesn't exist yet
+
+    - name: Report Results
+      debug:
+        msg: |
+          Repository exists: {{ repo_status.stat.exists }}
+          Service is active: {{ service_status.active | default(false) }}

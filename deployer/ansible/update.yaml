@@ -1,0 +1,17 @@
+---
+- name: Update Service and Restart
+  hosts: "{{ service }}"
+  remote_user: root
+  become: yes
+
+  tasks:
+    - name: Pull latest changes
+      git:
+        repo: "https://github.com/nesiler/CESTX"
+        dest: "/home/cestx"
+        update: yes
+
+    - name: Restart the service
+      systemd:
+        name: "{{ service }}"
+        state: restarted

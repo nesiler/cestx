@@ -12,26 +12,6 @@ import (
 	"github.com/nesiler/cestx/common"
 )
 
-type Config struct {
-	GitHubToken   string `json:"github_token"`
-	RepoOwner     string `json:"repo_owner"`
-	RepoName      string `json:"repo_name"`
-	RepoPath      string `json:"repo_path"`
-	CheckInterval int    `json:"check_interval"`
-	AnsiblePath   string `json:"ansible_path"`
-}
-
-func LoadConfig(filename string) (*Config, error) {
-	data, err := os.ReadFile(filename)
-	common.FailError(err, "error reading config file: %v")
-
-	var config Config
-	err = json.Unmarshal(data, &config)
-	common.FailError(err, "error parsing config file: %v")
-
-	return &config, nil
-}
-
 func exportSSHKeyToHost(keyName, identifierType, identifier string) error {
 	keyPath := fmt.Sprintf("%s/.ssh/%s.pub", os.Getenv("HOME"), keyName)
 	key, err := os.ReadFile(keyPath)
@@ -110,4 +90,10 @@ func ensureSSHKeyExists(keyName string) error {
 		return cmd.Run()
 	}
 	return nil
+}
+
+func checkSSHKeyExported(host string) bool {
+	common.Info("Checking SSH key for host %s\n", host)
+	cmd := exec.Command("ansible", host, "-m", "ping", "-i", "ansible/inventory.yaml", "--private-key", os.Getenv("HOME")+"/.ssh/master", "-u", "root")
+	return cmd.Run() == nil
 }

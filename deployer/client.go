@@ -4,6 +4,7 @@ import (
 	"context"
 	"os/exec"
 	"strings"
+	"time"
 
 	"github.com/google/go-github/v35/github"
 	"github.com/nesiler/cestx/common"
@@ -65,4 +66,40 @@ func (c *GitHubClient) GetChangedDirs(repoPath, latestCommit string) ([]string, 
 		dirs = append(dirs, dir)
 	}
 	return dirs, nil
+}
+
+// watchForChanges watches for new commits and triggers deployments
+func watchForChanges(config *Config, client *GitHubClient) {
+	var latestCommit string
+
+	for {
+		// Get the latest commit from GitHub
+		commit, err := client.GetLatestCommit(config.RepoOwner, config.RepoName)
+		common.FailError(err, "Error getting latest commit: %v\n")
+
+		if commit != latestCommit {
+			common.Ok("New commit detected: %s\n", commit)
+			common.SendMessageToTelegram("New commit detected: " + commit)
+
+			// Pull the latest changes from the repository
+			common.FailError(client.PullLatest(config.RepoPath), "Error pulling latest changes")
+
+			// Get the list of changed directories in the repository
+			changedDirs, err := client.GetChangedDirs(config.RepoPath, commit)
+			common.FailError(err, "Error getting changed directories")
+
+			// For each changed directory, deploy the corresponding service
+			for _, dir := range changedDirs {
+				if err := Deploy(config, dir); err != nil {
+					common.Warn("Error deploying %s: %v", dir, err)
+				} else {
+					common.Ok("Successfully deployed: %s", dir)
+					common.SendMessageToTelegram("Successfully deployed: " + dir)
+				}
+			}
+			latestCommit = commit // Update latest commit hash
+		}
+
+		time.Sleep(time.Second * time.Duration(config.CheckInterval))
+	}
 }
