@@ -102,22 +102,22 @@ func main() {
 			latestCommit = commit
 			err := client.PullLatest(config.RepoPath)
 			if err != nil {
-				common.Warn("Error pulling latest changes: %v\n", err)
+				common.Warn("Error pulling latest changes: %v", err)
 				continue
 			}
 
 			changedDirs, err := client.GetChangedDirs(config.RepoPath, latestCommit)
 			if err != nil {
-				common.Warn("Error getting changed directories: %v\n", err)
+				common.Warn("Error getting changed directories: %v", err)
 				continue
 			}
 
 			for _, dir := range changedDirs {
 				err := Deploy(config, dir)
 				if err != nil {
-					common.Warn("Error deploying %s: %v\n", dir, err)
+					common.Warn("Error deploying %s: %v", dir, err)
 				} else {
-					common.Head("Successfully deployed: %s\n", dir)
+					common.Ok("Successfully deployed: %s", dir)
 					common.SendMessageToTelegram("Successfully deployed: " + dir)
 				}
 			}

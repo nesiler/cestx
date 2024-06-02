@@ -14,8 +14,11 @@ func serviceTest() {
 	if err != nil {
 		common.Fatal("Error reading service configuration file: %v\n", err)
 	}
+
 	// Register the service with the registry
-	common.RegisterService(serviceFile)
+	service, err := common.JsonToService(serviceFile)
+	common.FailError(err, "")
+	common.RegisterService(service)
 
 	// Setup health check endpoint
 	http.HandleFunc("/health", common.HealthHandler())
@@ -29,14 +32,6 @@ func serviceTest() {
 	if err := http.ListenAndServe(":3333", nil); err != nil {
 		common.Fatal("Error starting health check service: %v\n", err)
 	}
-}
-
-func envFinderTest() {
-	apiHost, err := common.FindEnvVar("PYTHON_API_HOST")
-	if err != nil {
-		common.Fatal("Could not find PYTHON_API_HOST: %v", err)
-	}
-	common.Info("PYTHON_API_HOST:", apiHost)
 }
 
 func telegramTest() {
@@ -60,6 +55,14 @@ func main() {
 	// }
 	// println(keyPath)
 
-	ip := "127.0.0.1"
-	common.Info("Health check service running on http://%s:3333/health\n", ip)
+	// ip := "127.0.0.1"
+	// common.Info("Health check service running on http://%s:3333/health\n", ip)
+
+	// common.Head("--TEST STARTS--")
+	// common.Out("This is a test message")
+	// common.Info("This is an info message")
+	// common.Warn("This is a warning message")
+	// common.Err("This is an error message")
+	// common.Ok("This is a success message")
+	// common.FailError(fmt.Errorf("this is a test error"), "this is a test error message")
 }
