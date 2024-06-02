@@ -13,7 +13,7 @@ import (
 )
 
 var (
-	Head  = color.New(color.FgHiMagenta).Add(color.Bold).Add(color.Underline).Add(color.BgHiWhite).PrintfFunc()
+	Head  = newlinePrintfFunc(color.New(color.FgHiMagenta).Add(color.Bold).Add(color.Underline).Add(color.BgHiWhite).PrintfFunc())
 	Out   = newlinePrintfFunc(color.New(color.FgHiWhite).PrintfFunc())
 	Info  = newlinePrintfFunc(color.New(color.FgCyan).PrintfFunc())
 	Warn  = newlinePrintfFunc(color.New(color.FgHiYellow).Add(color.Bold).PrintfFunc())
@@ -21,6 +21,7 @@ var (
 	Fatal = func(format string, args ...interface{}) {
 		msg := fmt.Sprintf(format, args...)
 		color.New(color.FgHiRed).Add(color.Bold).Add(color.BgBlack).Println(msg)
+		color.Unset()
 		os.Exit(1) // Terminate the program
 	}
 	Ok              = newlinePrintfFunc(color.New(color.FgHiGreen).PrintfFunc())
@@ -47,6 +48,7 @@ type HealthCheck struct {
 func newlinePrintfFunc(f func(format string, a ...interface{})) func(format string, a ...interface{}) {
 	return func(format string, a ...interface{}) {
 		f(format+"\n", a...)
+		color.Unset() // Reset the color settings
 	}
 }
 
@@ -54,6 +56,7 @@ func errorPrintfFunc(f func(format string, a ...interface{})) func(format string
 	return func(format string, a ...interface{}) error {
 		fmt.Println()
 		f(format+"\n", a...)
+		color.Unset() // Reset the color settings
 		return fmt.Errorf(format, a...)
 	}
 }
@@ -63,7 +66,6 @@ func FailError(err error, format string, args ...interface{}) {
 		Err(format, args...)
 		Fatal(format, err)
 	}
-
 }
 
 // SendMessageToChat sends a message to the chat using the Python API.
