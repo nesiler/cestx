@@ -27,13 +27,13 @@
         {{ deploy_command[service] }}
   vars:
     deploy_command:
-      REDIS: "docker compose up -d --force-recreate"
-      POSTGRESQL: "docker compose up -d --force-recreate"
-      RABBITMQ: "docker compose up -d --force-recreate"
-      REGISTRY: "go build -o {{ service }} && ./{{ service }}"
-      LOGGING-S: "go build -o {{ service }} && ./{{ service }}"
-      TASK-S: "go build -o {{ service }} && ./{{ service }}"
-      PROXY-S: "go build -o {{ service }} && ./{{ service }}"
-      TEMPLATE-S: "go build -o {{ service }} && ./{{ service }}"
-      MACHINE-S: "go build -o {{ service }} && ./{{ service }}"
-      API-GW: "dotnet run"
+      redis: "docker compose up -d --force-recreate"
+      postgresql: "docker compose up -d --force-recreate"
+      rabbitmq: "docker compose up -d --force-recreate"
+      registry: "go build -o {{ service }} && ./{{ service }}"
+      logging-s: "go build -o {{ service }} && ./{{ service }}"
+      task-s: "go build -o {{ service }} && ./{{ service }}"
+      proxy-s: "go build -o {{ service }} && ./{{ service }}"
+      template-s: "go build -o {{ service }} && ./{{ service }}"
+      machine-s: "go build -o {{ service }} && ./{{ service }}"
+      api-gw: "dotnet run"
