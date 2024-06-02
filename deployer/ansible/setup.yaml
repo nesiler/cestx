@@ -17,7 +17,6 @@
       api-gw: "dotnet run"
 
   tasks:
-
     - name: Update apt cache
       apt:
         update_cache: yes
@@ -37,7 +36,7 @@
       git:
         repo: "https://github.com/nesiler/CESTX"
         dest: "/home/cestx"
-        
+
     - name: Copy .env file to hosts
       copy:
         src: "/home/cestx/.env"
@@ -51,16 +50,16 @@
         set +a
       args:
         executable: /bin/bash
-        
+
     - name: Copy service file
       template:
-        src: "{{ service }}.service.j2" 
+        src: "/services/{{ service }}.service"
         dest: "/etc/systemd/system/{{ service }}.service"
 
     - name: Reload systemd daemon
       systemd:
         daemon_reload: true
-        
+
     - name: Enable and start service
       systemd:
         name: "{{ service }}"

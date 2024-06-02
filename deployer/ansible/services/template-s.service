@@ -1,0 +1,13 @@
+[Unit]
+Description=template-s Service
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/home/cestx/template-s
+ExecStart=go build -o template-s && ./template-s
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

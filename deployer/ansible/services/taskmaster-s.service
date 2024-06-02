@@ -1,0 +1,13 @@
+[Unit]
+Description=taskmaster-s Service
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/home/cestx/taskmaster-s
+ExecStart=go build -o taskmaster-s && ./taskmaster-s
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

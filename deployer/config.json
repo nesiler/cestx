@@ -1,10 +1,10 @@
 {
   "github_token": "",
   "repo_owner": "nesiler",
-  "repo_name": "CESTX",
-  "repo_path": "/home/CESTX",
+  "repo_name": "cestx",
+  "repo_path": "/home/cestx",
   "check_interval": 60,
-  "ansible_path": "/home/CESTX/deployer/ansible",
+  "ansible_path": "/home/cestx/deployer/ansible",
   "service_build_commands": {
     "registry": "go build -o registry && ./registry",
     "logger-s": "go build -o logger-s && ./logger-s",

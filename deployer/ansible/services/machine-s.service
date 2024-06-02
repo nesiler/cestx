@@ -1,0 +1,13 @@
+[Unit]
+Description=machine-s Service
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/home/cestx/machine-s
+ExecStart=go build -o machine-s && ./machine-s
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

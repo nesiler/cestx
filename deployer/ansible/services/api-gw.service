@@ -1,0 +1,14 @@
+[Unit]
+Description=api-gw Service
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/home/cestx/api-gw
+ExecStart=echo "Ok"
+# ExecStart=dotnet run
+# Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

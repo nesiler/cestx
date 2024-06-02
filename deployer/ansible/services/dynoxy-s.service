@@ -1,0 +1,13 @@
+[Unit]
+Description=dynoxy-s Service
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/home/cestx/dynoxy-s
+ExecStart=go build -o dynoxy-s && ./dynoxy-s
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,27 @@
+---
+- name: Clean Up Services and SSH Keys
+  hosts: all
+  remote_user: root
+  become: true
+
+  tasks:
+    - name: Stop and disable service if running
+      ansible.builtin.systemd:
+        name: "{{ inventory_hostname }}"
+        state: stopped
+        enabled: false
+
+    - name: Remove service file
+      ansible.builtin.file:
+        path: "/etc/systemd/system/{{ inventory_hostname }}.service"
+        state: absent
+
+    - name: Remove repository directory
+      ansible.builtin.file:
+        path: "/home/cestx"
+        state: absent
+
+    - name: Clean authorized_keys file
+      ansible.builtin.file:
+        path: "/root/.ssh/authorized_keys"
+        state: absent
