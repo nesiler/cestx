@@ -1,14 +1,14 @@
 all:
   hosts:
-    redis:
-      ansible_host: 192.168.4.60
-      ansible_ssh_private_key_file: ~/.ssh/master
-    postgresql:
-      ansible_host: 192.168.4.61
-      ansible_ssh_private_key_file: ~/.ssh/master
-    rabbitmq:
-      ansible_host: 192.168.4.62
-      ansible_ssh_private_key_file: ~/.ssh/master
+    # redis:
+    #   ansible_host: 192.168.4.60
+    #   ansible_ssh_private_key_file: ~/.ssh/master
+    # postgresql:
+    #   ansible_host: 192.168.4.61
+    #   ansible_ssh_private_key_file: ~/.ssh/master
+    # rabbitmq:
+    #   ansible_host: 192.168.4.62
+    #   ansible_ssh_private_key_file: ~/.ssh/master
     registry:
       ansible_host: 192.168.4.63
       ansible_ssh_private_key_file: ~/.ssh/master
@@ -18,7 +18,7 @@ all:
     task-s:
       ansible_host: 192.168.4.65
       ansible_ssh_private_key_file: ~/.ssh/master
-    proxy-s:
+    dynoxy-s:
       ansible_host: 192.168.4.66
       ansible_ssh_private_key_file: ~/.ssh/master
     template-s:

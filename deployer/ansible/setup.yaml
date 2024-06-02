@@ -11,7 +11,7 @@
       registry: "go build -o {{ service }} && ./{{ service }}"
       logging-s: "go build -o {{ service }} && ./{{ service }}"
       task-s: "go build -o {{ service }} && ./{{ service }}"
-      proxy-s: "go build -o {{ service }} && ./{{ service }}"
+      dynoxy-s: "go build -o {{ service }} && ./{{ service }}"
       template-s: "go build -o {{ service }} && ./{{ service }}"
       machine-s: "go build -o {{ service }} && ./{{ service }}"
       api-gw: "dotnet run"
@@ -34,7 +34,7 @@
 
     - name: Clone repository if not present
       git:
-        repo: "https://github.com/nesiler/CESTX"
+        repo: "https://github.com/nesiler/cestx"
         dest: "/home/cestx"
 
     - name: Copy .env file to hosts
@@ -53,7 +53,7 @@
 
     - name: Copy service file
       template:
-        src: "/services/{{ service }}.service"
+        src: "services/{{ service }}.service"
         dest: "/etc/systemd/system/{{ service }}.service"
 
     - name: Reload systemd daemon

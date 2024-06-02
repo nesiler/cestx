@@ -33,15 +33,18 @@ type Config struct {
 	ServiceBuildCommands map[string]string `json:"service_build_commands"`
 }
 
-func LoadConfig(filename string) (*Config, error) {
+var (
+	config *Config
+)
+
+func LoadConfig(filename string) error {
 	data, err := os.ReadFile(filename)
 	common.FailError(err, "error reading config file: %v")
 
-	var config Config
 	err = json.Unmarshal(data, &config)
 	common.FailError(err, "error parsing config file: %v")
 
-	return &config, nil
+	return nil
 }
 
 // readInventory reads the inventory file and returns a map of hostnames to ansible_host values.
@@ -63,7 +66,7 @@ func readInventory(filePath string) (map[string]string, error) {
 }
 
 // handleSSHKeysAndServiceChecks handles SSH key setup and service checks
-func handleSSHKeysAndServiceChecks(config *Config) {
+func handleSSHKeysAndServiceChecks() {
 	inventoryPath := config.AnsiblePath + "/inventory.yaml"
 	hosts, err := readInventory(inventoryPath)
 	common.FailError(err, "Error reading inventory: %v")
@@ -72,17 +75,19 @@ func handleSSHKeysAndServiceChecks(config *Config) {
 		// Check if SSH key is exported and if not, export it
 		if !checkSSHKeyExported(name) {
 			common.Info("Setting up SSH key for host %s\n", name)
-			common.FailError(setupSSHKeyForHost("master", name, ip), "Error setting up SSH keys for host %s: %v", name, err)
+			err := setupSSHKeyForHost("master", name, ip)
+			common.FailError(err, "Error setting up SSH keys for host %s: %v")
 		} else {
 			common.Ok("SSH key already exported to host %s\n", name)
 		}
 
 		// Check if the service exists and if not, run the setup playbook
-		if !checkServiceExists(name, map[string]string{"service": name}) {
+		repoExists, serviceExists := checkServiceExists(name, map[string]string{"service": name})
+		if !repoExists || !serviceExists {
 			common.Info("Setting up service for host %s\n", name)
 
 			// Pass the service name as an extra variable to the playbook
-			err := runAnsiblePlaybook(config.AnsiblePath+"/setup.yml", name, map[string]string{"service": name})
+			err := runAnsiblePlaybook(config.AnsiblePath+"/setup.yaml", name, map[string]string{"service": name})
 			if err != nil {
 				common.Err("Error setting up service for host %s: %v", name, err) // Log error instead of failing
 			}
@@ -98,15 +103,15 @@ func main() {
 	common.PYTHON_API_HOST = os.Getenv("PYTHON_API_HOST")
 
 	// 1. Load configuration
-	config, err := LoadConfig("config.json")
+	err := LoadConfig("config.json")
 	common.FailError(err, "Error loading configuration: %v\n")
 
 	// 2. Initialize GitHub client
 	client := NewGitHubClient(config.GitHubToken)
 
 	// 3. Setup SSH Keys & Check Service Readiness
-	go handleSSHKeysAndServiceChecks(config) // Run in a separate goroutine
+	handleSSHKeysAndServiceChecks() // Run in a separate goroutine
 
 	// 4. Watch for changes and deploy
-	watchForChanges(config, client)
+	watchForChanges(client)
 }

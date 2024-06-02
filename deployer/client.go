@@ -50,7 +50,7 @@ func (client *GitHubClient) PullLatest(repoPath string) error {
 func (c *GitHubClient) GetChangedDirs(repoPath, latestCommit string) ([]string, error) {
 	cmd := exec.Command("git", "-C", repoPath, "diff", "--name-only", latestCommit+"^!")
 	output, err := cmd.Output()
-	common.FailError(err, "") // TODO: check if it's correct to ignore the error here
+	common.FailError(err, "")
 
 	changedFiles := strings.Split(strings.TrimSpace(string(output)), "\n")
 	dirSet := make(map[string]struct{})
@@ -69,7 +69,7 @@ func (c *GitHubClient) GetChangedDirs(repoPath, latestCommit string) ([]string, 
 }
 
 // watchForChanges watches for new commits and triggers deployments
-func watchForChanges(config *Config, client *GitHubClient) {
+func watchForChanges(client *GitHubClient) {
 	var latestCommit string
 
 	for {
@@ -90,7 +90,7 @@ func watchForChanges(config *Config, client *GitHubClient) {
 
 			// For each changed directory, deploy the corresponding service
 			for _, dir := range changedDirs {
-				if err := Deploy(config, dir); err != nil {
+				if err := Deploy(dir); err != nil {
 					common.Warn("Error deploying %s: %v", dir, err)
 				} else {
 					common.Ok("Successfully deployed: %s", dir)
