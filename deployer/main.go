@@ -80,7 +80,7 @@ func handleSSHKeysAndServiceChecks(config *Config) {
 		// Check if the service exists and if not, run the setup playbook
 		if !checkServiceExists(name) {
 			common.Info("Setting up service for host %s\n", name)
-			common.FailError(runAnsiblePlaybook(config.AnsiblePath+"/setup.yml", name),
+			common.FailError(runAnsiblePlaybook(config.AnsiblePath+"/setup.yaml", name),
 				"Error setting up service for host %s", name)
 		}
 	}

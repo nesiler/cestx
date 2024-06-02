@@ -34,7 +34,7 @@ func Deploy(config *Config, serviceName string) error {
 	}
 
 	// Check if repository is cloned
-	err = runAnsiblePlaybook(config.AnsiblePath+"/check.yml", host)
+	err = runAnsiblePlaybook(config.AnsiblePath+"/check.yaml", host)
 	if err != nil {
 		common.Err("Error checking repository and service: %v", err)
 		return err
@@ -42,9 +42,9 @@ func Deploy(config *Config, serviceName string) error {
 
 	// Update or setup
 	if checkServiceExists(host) {
-		err = runAnsiblePlaybook(config.AnsiblePath+"/update.yml", host)
+		err = runAnsiblePlaybook(config.AnsiblePath+"/update.yaml", host)
 	} else {
-		err = runAnsiblePlaybook(config.AnsiblePath+"/setup.yml", host)
+		err = runAnsiblePlaybook(config.AnsiblePath+"/setup.yaml", host)
 	}
 	if err != nil {
 		common.Err("Error running playbook: %v", err)

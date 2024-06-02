@@ -5,6 +5,11 @@
   become: true
 
   tasks:
+    - name: Remove repository directory
+      ansible.builtin.file:
+        path: "/home/cestx"
+        state: absent
+
     - name: Stop and disable service if running
       ansible.builtin.systemd:
         name: "{{ inventory_hostname }}"
@@ -14,11 +19,6 @@
     - name: Remove service file
       ansible.builtin.file:
         path: "/etc/systemd/system/{{ inventory_hostname }}.service"
-        state: absent
-
-    - name: Remove repository directory
-      ansible.builtin.file:
-        path: "/home/cestx"
         state: absent
 
     - name: Clean authorized_keys file
