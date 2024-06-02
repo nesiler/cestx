@@ -36,9 +36,7 @@ var (
 func main() {
 	// Load configuration file
 	configFile, err := os.ReadFile("config.json")
-	if err != nil {
-		common.Fatal("Error reading config file: %v\n", err)
-	}
+	common.FailError(err, "Error reading config file")
 
 	err = json.Unmarshal(configFile, &configData)
 	common.FailError(err, "Error parsing config file")
