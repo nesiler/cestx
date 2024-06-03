@@ -29,16 +29,23 @@
           - nano
         state: present
 
+    - name: Check if repository directory exists
+      ansible.builtin.stat:
+        path: "/home/cestx"
+      register: repo_exists
+
     - name: Clone repository if not present
       ansible.builtin.git:
         repo: "https://github.com/nesiler/cestx"
         dest: "/home/cestx"
+      when: not repo_exists.stat.exists
 
     - name: Pull latest changes
-      git:
+      ansible.builtin.git:
         repo: "https://github.com/nesiler/CESTX"
         dest: "/home/cestx"
         update: yes
+      when: repo_exists.stat.exists
 
     - name: Copy .env file to hosts
       ansible.builtin.copy:
