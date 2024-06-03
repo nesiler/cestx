@@ -87,6 +87,7 @@ func checkServiceExists(host string, extraVars map[string]string) (bool, bool) {
 	}
 
 	output := stdout.String()
+	common.Warn("Ansible check output: %s", output)
 	repoExists := strings.Contains(output, "Repository exists: True")
 	serviceActive := strings.Contains(output, "Service is active: True")
 
