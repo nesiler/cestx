@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 	"os"
 
-	"github.com/goccy/go-yaml"
 	"github.com/joho/godotenv"
 	"github.com/nesiler/cestx/common"
+	"gopkg.in/yaml.v2"
 )
 
 // Host represents a single host in the inventory.
