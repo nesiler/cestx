@@ -30,6 +30,7 @@ func registerServiceHandler(w http.ResponseWriter, r *http.Request) {
 
 func registerService(service common.Service) {
 	common.Info("Registering service: %s", service.Name)
+	common.SendMessageToTelegram("**REGISTRY** ::: Registering service: " + service.Name)
 
 	serviceData, err := json.Marshal(service)
 	common.FailError(err, "")
@@ -98,5 +99,41 @@ func monitorService(service common.Service) {
 	err = rdb.HSet(ctx, "service:"+service.ID, "status", status).Err()
 	if err != nil {
 		common.Warn("Error updating status for service %s: %v", service.Name, err)
+	}
+}
+
+func checkUp() {
+	// Get all keys that start with "service:"
+	keys, err := rdb.Keys(ctx, "service:*").Result()
+	if err != nil {
+		common.Fatal("Error fetching service keys from Redis: %v\n", err)
+	}
+
+	for _, key := range keys {
+		// Get the service data and status
+		serviceData, err := rdb.HGet(ctx, key, "data").Result()
+		if err != nil {
+			common.Warn("Error fetching service data for key %s: %v", key, err)
+			continue
+		}
+
+		var service common.Service
+		err = json.Unmarshal([]byte(serviceData), &service)
+		if err != nil {
+			common.Warn("Error unmarshalling service data for key %s: %v", key, err)
+			continue
+		}
+
+		status, err := rdb.HGet(ctx, key, "status").Result()
+		if err != nil {
+			common.Warn("Error fetching service status for key %s: %v", key, err)
+			continue
+		}
+
+		if status == "unhealthy" {
+			alertMessage := "**ALERT** ::: Service is down: " + service.Name + " (" + service.Address + ")"
+			common.SendMessageToTelegram(alertMessage)
+			common.Warn("Service is down: %s", service.Name)
+		}
 	}
 }

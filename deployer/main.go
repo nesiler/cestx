@@ -123,7 +123,6 @@ func handleSSHKeysAndServiceChecks() {
 
 func main() {
 	common.Head("--DEPLOYER STARTS--")
-	common.SendMessageToTelegram("**DEPLOYER** ::: Service started at " + time.Now().String())
 	godotenv.Load("../.env")
 	godotenv.Load(".env")
 
@@ -132,6 +131,7 @@ func main() {
 		common.Warn("PYTHON_API_HOST not set, using default value")
 		common.PYTHON_API_HOST = "http://192.168.4.99"
 	}
+	common.SendMessageToTelegram("**DEPLOYER** ::: Service started at " + time.Now().String())
 
 	// 1. Load configuration
 	err := LoadConfig("config.json")
