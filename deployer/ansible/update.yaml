@@ -10,6 +10,7 @@
         repo: "https://github.com/nesiler/CESTX"
         dest: "/home/cestx"
         update: yes
+        force: yes
 
     - name: Restart the service
       systemd:

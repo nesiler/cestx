@@ -45,6 +45,7 @@
         repo: "https://github.com/nesiler/CESTX"
         dest: "/home/cestx"
         update: yes
+        force: yes
       when: repo_exists.stat.exists
 
     - name: Copy .env file to hosts
