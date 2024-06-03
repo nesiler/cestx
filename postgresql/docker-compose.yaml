@@ -5,8 +5,7 @@ services:
     image: postgres:latest
     container_name: postgresql
     networks:
-      cestx_net:
-        ipv4_address: 192.168.4.61
+      - cestx_net
     volumes:
       - ./pg_data:/var/lib/postgresql/data
     ports:
@@ -18,7 +17,4 @@ services:
 
 networks:
   cestx_net:
-    driver: bridge
-    ipam:
-      config:
-        - subnet: 192.168.4.0/22
+    driver: host

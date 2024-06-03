@@ -5,8 +5,7 @@ services:
     image: redis:latest
     container_name: redis
     networks:
-      proxmox_net:
-        ipv4_address: 192.168.4.60
+      - cestx_net
     volumes:
       - ./redis_data:/data
     ports:
@@ -16,8 +15,5 @@ services:
       - REDIS_PORT=6379
 
 networks:
-  proxmox_net:
-    driver: bridge
-    ipam:
-      config:
-        - subnet: 192.168.4.0/22
+  cestx_net:
+    driver: host

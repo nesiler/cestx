@@ -5,8 +5,7 @@ services:
     image: rabbitmq:3-management
     container_name: rabbitmq
     networks:
-      cestx_net:
-        ipv4_address: 192.168.4.62
+      - cestx_net
     volumes:
       - ./rabbitmq_data:/var/lib/rabbitmq
     ports:
@@ -18,7 +17,4 @@ services:
 
 networks:
   cestx_net:
-    driver: bridge
-    ipam:
-      config:
-        - subnet: 192.168.4.0/22
+    driver: host
