@@ -7,7 +7,7 @@
   tasks:
     - name: Pull latest changes
       git:
-        repo: "https://github.com/nesiler/CESTX"
+        repo: "https://github.com/nesiler/cestx"
         dest: "/home/cestx"
         update: yes
         force: yes

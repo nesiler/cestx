@@ -42,7 +42,7 @@
 
     - name: Pull latest changes
       ansible.builtin.git:
-        repo: "https://github.com/nesiler/CESTX"
+        repo: "https://github.com/nesiler/cestx"
         dest: "/home/cestx"
         update: yes
         force: yes
