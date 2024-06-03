@@ -8,6 +8,7 @@ User=root
 WorkingDirectory=/home/cestx/template-s
 ExecStart=go build -o template-s && ./template-s
 Restart=on-failure
+RestartSec=10
 
 [Install]
 WantedBy=multi-user.target

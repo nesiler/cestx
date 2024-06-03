@@ -8,6 +8,7 @@ User=root
 WorkingDirectory=/home/cestx/registry
 ExecStart=go build -o registry && ./registry
 Restart=on-failure
+RestartSec=10
 
 [Install]
 WantedBy=multi-user.target

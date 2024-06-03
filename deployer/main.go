@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"os"
+	"sort"
 
 	"github.com/joho/godotenv"
 	"github.com/nesiler/cestx/common"
@@ -15,6 +16,7 @@ type Host struct {
 	Name                     string `yaml:"name"`
 	AnsibleHost              string `yaml:"ansible_host"`
 	AnsibleSSHPrivateKeyFile string `yaml:"ansible_ssh_private_key_file"`
+	Priority                 int    `yaml:"priority"` // Add Priority field
 }
 
 // Inventory represents the structure of the inventory YAML file.
@@ -66,6 +68,7 @@ func readInventory(filePath string) error {
 		hosts = append(hosts, Host{
 			Name:        name,
 			AnsibleHost: host.AnsibleHost,
+			Priority:    host.Priority,
 		})
 	}
 
@@ -76,20 +79,12 @@ func readInventory(filePath string) error {
 func handleSSHKeysAndServiceChecks() {
 	common.Info("Checking started...")
 
-	// Print the list of hosts
-	for _, host := range hosts {
-		common.Info("Host: %s, IP: %s\n", host.Name, host.AnsibleHost)
-	}
+	// Sort hosts by priority
+	sort.Slice(hosts, func(i, j int) bool {
+		return hosts[i].Priority < hosts[j].Priority
+	})
 
 	for _, host := range hosts {
-		if !checkSSHKeyExported(host.Name) {
-			common.Info("Setting up SSH key for host %s\n", host.Name)
-			err := setupSSHKeyForHost("master", host.Name, host.AnsibleHost)
-			common.FailError(err, "Error setting up SSH keys for host %s: %v", host.Name, err)
-		} else {
-			common.Ok("SSH key already exported to host %s\n", host.Name)
-		}
-
 		// Check if the service exists and if not, run the setup playbook
 		repoExists, serviceExists := checkServiceExists(host.Name, map[string]string{"service": host.Name}) // Use AnsibleHost (IP)
 		if !repoExists || !serviceExists {
@@ -100,6 +95,14 @@ func handleSSHKeysAndServiceChecks() {
 			if err != nil {
 				common.Err("Error setting up service for host %s: %v", host.Name, err) // Log error instead of failing
 			}
+		}
+
+		if !checkSSHKeyExported(host.Name) {
+			common.Info("Setting up SSH key for host %s\n", host.Name)
+			err := setupSSHKeyForHost("master", host.Name, host.AnsibleHost)
+			common.FailError(err, "Error setting up SSH keys for host %s: %v", host.Name, err)
+		} else {
+			common.Ok("SSH key already exported to host %s\n", host.Name)
 		}
 	}
 }

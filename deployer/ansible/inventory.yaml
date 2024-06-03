@@ -3,24 +3,31 @@ services:
     registry:
       ansible_host: 192.168.4.63
       ansible_ssh_private_key_file: ~/.ssh/master
-    logger-s:
-      ansible_host: 192.168.4.64
-      ansible_ssh_private_key_file: ~/.ssh/master
-    taskmaster-s:
-      ansible_host: 192.168.4.65
-      ansible_ssh_private_key_file: ~/.ssh/master
-    dynoxy-s:
-      ansible_host: 192.168.4.66
-      ansible_ssh_private_key_file: ~/.ssh/master
-    template-s:
-      ansible_host: 192.168.4.67
-      ansible_ssh_private_key_file: ~/.ssh/master
-    machine-s:
-      ansible_host: 192.168.4.68
-      ansible_ssh_private_key_file: ~/.ssh/master
+      priority: 1
     api-gw:
       ansible_host: 192.168.4.69
       ansible_ssh_private_key_file: ~/.ssh/master
+      priority: 2
+    logger-s:
+      ansible_host: 192.168.4.64
+      ansible_ssh_private_key_file: ~/.ssh/master
+      priority: 3
+    machine-s:
+      ansible_host: 192.168.4.68
+      ansible_ssh_private_key_file: ~/.ssh/master
+      priority: 4
+    taskmaster-s:
+      ansible_host: 192.168.4.65
+      ansible_ssh_private_key_file: ~/.ssh/master
+      priority: 5
+    dynoxy-s:
+      ansible_host: 192.168.4.66
+      ansible_ssh_private_key_file: ~/.ssh/master
+      priority: 6
+    template-s:
+      ansible_host: 192.168.4.67
+      ansible_ssh_private_key_file: ~/.ssh/master
+      priority: 7
 
 systems:
   hosts:

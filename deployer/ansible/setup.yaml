@@ -76,7 +76,7 @@
         enabled: yes
         state: started
 
-    - name: Deploy Service
-      ansible.builtin.shell: |
-        cd /home/cestx/{{ service }}
-        {{ deploy_command[service] }}
+    # - name: Deploy Service
+    #   ansible.builtin.shell: |
+    #     cd /home/cestx/{{ service }}
+    #     {{ deploy_command[service] }}
