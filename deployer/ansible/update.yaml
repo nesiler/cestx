@@ -12,6 +12,11 @@
         update: yes
         force: yes
 
+    - name: Build Go executable
+      ansible.builtin.shell: /usr/bin/go build -o {{ service }}
+      args:
+        chdir: /home/cestx/{{ service }}
+
     - name: Restart the service
       systemd:
         name: "{{ service }}"

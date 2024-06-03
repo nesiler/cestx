@@ -5,12 +5,12 @@
   become: yes
   vars:
     deploy_command:
-      registry: "go build -o {{ service }} && ./{{ service }}"
-      logger-s: "go build -o {{ service }} && ./{{ service }}"
-      taskmaster-s: "go build -o {{ service }} && ./{{ service }}"
-      dynoxy-s: "go build -o {{ service }} && ./{{ service }}"
-      template-s: "go build -o {{ service }} && ./{{ service }}"
-      machine-s: "go build -o {{ service }} && ./{{ service }}"
+      registry: "go build -o {{ service }}"
+      logger-s: "go build -o {{ service }}"
+      taskmaster-s: "go build -o {{ service }}"
+      dynoxy-s: "go build -o {{ service }}"
+      template-s: "go build -o {{ service }}"
+      machine-s: "go build -o {{ service }}"
       api-gw: "dotnet run"
 
   tasks:
@@ -60,6 +60,11 @@
         set +a
       args:
         executable: /bin/bash
+
+    - name: Build Go executable
+      ansible.builtin.shell: /usr/bin/go build -o {{ service }}
+      args:
+        chdir: /home/cestx/{{ service }}
 
     - name: Copy service file
       ansible.builtin.template:

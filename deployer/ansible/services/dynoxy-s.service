@@ -1,15 +1,16 @@
 [Unit]
-Description=dynoxy-s Service
+Description=Dynoxy Service
 After=network.target
 
 [Service]
 Type=simple
-User=root
+User=nobody
+Group=nogroup
 WorkingDirectory=/home/cestx/dynoxy-s
-ExecStartPre=-/usr/bin/go build -o dynoxy-s
-ExecStart=./dynoxy-s
+ExecStart=/home/cestx/dynoxy-s/dynoxy-s
 Restart=on-failure
 RestartSec=10
+AmbientCapabilities=CAP_NET_BIND_SERVICE  # If needed, granting minimal capabilities
 
 [Install]
 WantedBy=multi-user.target

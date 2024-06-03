@@ -1,15 +1,16 @@
 [Unit]
-Description=logger-s Service
+Description=Logger Service
 After=network.target
 
 [Service]
 Type=simple
-User=root
+User=nobody
+Group=nogroup
 WorkingDirectory=/home/cestx/logger-s
-ExecStartPre=-/usr/bin/go build -o logger-s
-ExecStart=./logger-s
+ExecStart=/home/cestx/logger-s/logger-s
 Restart=on-failure
 RestartSec=10
+AmbientCapabilities=CAP_NET_BIND_SERVICE  # If needed, granting minimal capabilities
 
 [Install]
 WantedBy=multi-user.target
