@@ -15,11 +15,11 @@
 
   tasks:
     - name: Update apt cache
-      apt:
+      ansible.builtin.apt:
         update_cache: yes
 
     - name: Install required packages
-      apt:
+      ansible.builtin.apt:
         name:
           - golang
           - git
@@ -30,18 +30,17 @@
         state: present
 
     - name: Clone repository if not present
-      git:
+      ansible.builtin.git:
         repo: "https://github.com/nesiler/cestx"
         dest: "/home/cestx"
 
     - name: Copy .env file to hosts
-      copy:
+      ansible.builtin.copy:
         src: "/home/cestx/.env"
         dest: "/home/cestx/.env"
-      delegate_to: localhost
 
     - name: Source environment variables from .env file
-      shell: |
+      ansible.builtin.shell: |
         set -a
         source /home/cestx/.env
         set +a
@@ -49,21 +48,21 @@
         executable: /bin/bash
 
     - name: Copy service file
-      template:
+      ansible.builtin.template:
         src: "services/{{ service }}.service"
         dest: "/etc/systemd/system/{{ service }}.service"
 
     - name: Reload systemd daemon
-      systemd:
-        daemon_reload: true
+      ansible.builtin.systemd:
+        daemon_reload: yes
 
     - name: Enable and start service
-      systemd:
+      ansible.builtin.systemd:
         name: "{{ service }}"
-        enabled: true
+        enabled: yes
         state: started
 
     - name: Deploy Service
-      shell: |
+      ansible.builtin.shell: |
         cd /home/cestx/{{ service }}
         {{ deploy_command[service] }}
