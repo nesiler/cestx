@@ -6,7 +6,8 @@ After=network.target
 Type=simple
 User=root
 WorkingDirectory=/home/cestx/logger-s
-ExecStart=go build -o logger-s && ./logger-s
+ExecStartPre=go build -o logger-s
+ExecStart=./logger-s
 Restart=on-failure
 RestartSec=10
 

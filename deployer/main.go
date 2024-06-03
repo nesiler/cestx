@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"sort"
+	"time"
 
 	"github.com/joho/godotenv"
 	"github.com/nesiler/cestx/common"
@@ -86,23 +87,33 @@ func handleSSHKeysAndServiceChecks() {
 
 	for _, host := range hosts {
 		// Check if the service exists and if not, run the setup playbook
-		repoExists, serviceExists := checkServiceExists(host.Name, map[string]string{"service": host.Name}) // Use AnsibleHost (IP)
+		repoExists, serviceExists := checkServiceExists(host.Name, map[string]string{"service": host.Name})
 		if !repoExists || !serviceExists {
 			common.Info("Setting up service for host %s\n", host.Name)
 
-			// Pass the service name as an extra variable to the playbook
-			err := runAnsiblePlaybook(config.AnsiblePath+"/setup.yaml", host.Name, map[string]string{"service": host.Name}) // Use AnsibleHost (IP)
+			err := runAnsiblePlaybook(config.AnsiblePath+"/setup.yaml", host.Name, map[string]string{"service": host.Name})
 			if err != nil {
-				common.Err("Error setting up service for host %s: %v", host.Name, err) // Log error instead of failing
+				common.Err("Error setting up service for host %s: %v", host.Name, err)
 			}
 		}
 
-		if !checkSSHKeyExported(host.Name) {
-			common.Info("Setting up SSH key for host %s\n", host.Name)
+		maxRetries := 3 // Maximum number of retries
+		for retry := 0; retry < maxRetries; retry++ {
+			if checkSSHKeyExported(host.Name) {
+				common.Ok("SSH key already exported to host %s\n", host.Name)
+				break // Key is already exported, exit the retry loop
+			}
+			common.Info("Setting up SSH key for host %s (attempt %d)\n", host.Name, retry+1)
 			err := setupSSHKeyForHost("master", host.Name, host.AnsibleHost)
-			common.FailError(err, "Error setting up SSH keys for host %s: %v", host.Name, err)
-		} else {
-			common.Ok("SSH key already exported to host %s\n", host.Name)
+			if err != nil {
+				common.Warn("Error setting up SSH keys for host %s: %v", host.Name, err)
+				if retry < maxRetries-1 { // Don't sleep on the last retry
+					time.Sleep(5 * time.Second) // Wait before retrying
+					continue
+				}
+				// return common.Err("Failed to set up SSH keys for host %s after %d attempts: %v", host.Name, maxRetries, err)
+			}
+			break // Key setup successful, exit the loop
 		}
 	}
 }

@@ -6,7 +6,8 @@ After=network.target
 Type=simple
 User=root
 WorkingDirectory=/home/cestx/registry
-ExecStart=go build -o registry && ./registry
+ExecStartPre=go build -o registry 
+ExecStart=./registry
 Restart=on-failure
 RestartSec=10
 
