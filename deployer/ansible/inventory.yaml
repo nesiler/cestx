@@ -4,10 +4,10 @@ services:
       ansible_host: 192.168.4.63
       ansible_ssh_private_key_file: ~/.ssh/master
       priority: 1
-    api-gw:
-      ansible_host: 192.168.4.69
-      ansible_ssh_private_key_file: ~/.ssh/master
-      priority: 2
+    # api-gw:
+    #   ansible_host: 192.168.4.69
+    #   ansible_ssh_private_key_file: ~/.ssh/master
+    #   priority: 2
     logger-s:
       ansible_host: 192.168.4.64
       ansible_ssh_private_key_file: ~/.ssh/master
