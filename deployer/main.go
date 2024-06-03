@@ -48,7 +48,24 @@ func LoadConfig(filename string) error {
 }
 
 // readInventory reads the inventory file and returns a map of hostnames to ansible_host values.
-func readInventory(filePath string) (map[string]string, error) {
+// func readInventory(filePath string) (map[string]string, error) {
+// 	data, err := os.ReadFile(filePath)
+// 	common.FailError(err, "error reading inventory file: %v", filePath)
+
+// 	var inventory Inventory
+// 	err = yaml.Unmarshal(data, &inventory)
+// 	common.FailError(err, "error unmarshalling inventory: %v", filePath)
+
+// 	hosts := make(map[string]string)
+// 	for name, host := range inventory.All.Hosts {
+// 		common.Info("Found host %s with IP %s", name, host.AnsibleHost)
+// 		hosts[name] = host.AnsibleHost
+// 	}
+
+// 	return hosts, nil
+// }
+
+func readInventory(filePath string) ([]Host, error) {
 	data, err := os.ReadFile(filePath)
 	common.FailError(err, "error reading inventory file: %v", filePath)
 
@@ -56,13 +73,16 @@ func readInventory(filePath string) (map[string]string, error) {
 	err = yaml.Unmarshal(data, &inventory)
 	common.FailError(err, "error unmarshalling inventory: %v", filePath)
 
-	hosts := make(map[string]string)
+	var orderedHosts []Host
 	for name, host := range inventory.All.Hosts {
-		common.Info("Found host %s with IP %s\n", name, host.AnsibleHost)
-		hosts[name] = host.AnsibleHost
+		common.Info("Found host %s with IP %s", name, host.AnsibleHost)
+		orderedHosts = append(orderedHosts, Host{
+			Name:        name,
+			AnsibleHost: host.AnsibleHost,
+		})
 	}
 
-	return hosts, nil
+	return orderedHosts, nil
 }
 
 // handleSSHKeysAndServiceChecks handles SSH key setup and service checks
@@ -71,25 +91,25 @@ func handleSSHKeysAndServiceChecks() {
 	hosts, err := readInventory(inventoryPath)
 	common.FailError(err, "Error reading inventory: %v")
 
-	for name, ip := range hosts {
-		// Check if SSH key is exported and if not, export it
-		if !checkSSHKeyExported(name) {
-			common.Info("Setting up SSH key for host %s\n", name)
-			err := setupSSHKeyForHost("master", name, ip)
-			common.FailError(err, "Error setting up SSH keys for host %s: %v")
+	for _, host := range hosts {
+		// Access host.Name and host.AnsibleHost directly
+		if !checkSSHKeyExported(host.Name) {
+			common.Info("Setting up SSH key for host %s\n", host.Name)
+			err := setupSSHKeyForHost("master", host.Name, host.AnsibleHost)
+			common.FailError(err, "Error setting up SSH keys for host %s: %v", host.Name, err)
 		} else {
-			common.Ok("SSH key already exported to host %s\n", name)
+			common.Ok("SSH key already exported to host %s\n", host.Name)
 		}
 
 		// Check if the service exists and if not, run the setup playbook
-		repoExists, serviceExists := checkServiceExists(name, map[string]string{"service": name})
+		repoExists, serviceExists := checkServiceExists(host.Name, map[string]string{"service": host.Name}) // Use AnsibleHost (IP)
 		if !repoExists || !serviceExists {
-			common.Info("Setting up service for host %s\n", name)
+			common.Info("Setting up service for host %s\n", host.Name)
 
 			// Pass the service name as an extra variable to the playbook
-			err := runAnsiblePlaybook(config.AnsiblePath+"/setup.yaml", name, map[string]string{"service": name})
+			err := runAnsiblePlaybook(config.AnsiblePath+"/setup.yaml", host.Name, map[string]string{"service": host.Name}) // Use AnsibleHost (IP)
 			if err != nil {
-				common.Err("Error setting up service for host %s: %v", name, err) // Log error instead of failing
+				common.Err("Error setting up service for host %s: %v", host.Name, err) // Log error instead of failing
 			}
 		}
 	}

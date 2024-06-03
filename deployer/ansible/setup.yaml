@@ -70,5 +70,3 @@
       shell: |
         cd /home/cestx/{{ service }}
         {{ deploy_command[service] }}
-      environment:
-        REGISTRY_HOST: "{{ lookup('env', 'REGISTRY_HOST') }}"

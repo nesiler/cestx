@@ -36,10 +36,17 @@ func Deploy(serviceName string) error {
 	hosts, err := readInventory(inventoryPath)
 	common.FailError(err, "Error reading inventory: %v")
 
-	// Find host
-	host, exists := hosts[serviceName]
-	if !exists {
-		common.Err("Error: Host not found for service %s", serviceName)
+	// Find host by service name (assuming service name matches host name in inventory)
+	var targetHost *Host
+	for _, h := range hosts {
+		if h.Name == serviceName {
+			targetHost = &h
+			break
+		}
+	}
+
+	if targetHost == nil {
+		return common.Err("Error: Host not found for service %s", serviceName)
 	}
 
 	// Pass the service name as an extra variable to the playbook
@@ -47,12 +54,12 @@ func Deploy(serviceName string) error {
 	playbook := config.AnsiblePath + "/update.yaml"
 
 	// Check if repository and service exist
-	repoExists, serviceExists := checkServiceExists(host, extraVars) // Get both results
+	repoExists, serviceExists := checkServiceExists(targetHost.AnsibleHost, extraVars) // Pass the host's IP address
 	if !repoExists || !serviceExists {
 		playbook = config.AnsiblePath + "/setup.yaml"
 	}
 
-	err = runAnsiblePlaybook(playbook, host, extraVars)
+	err = runAnsiblePlaybook(playbook, targetHost.AnsibleHost, extraVars)
 	if err != nil {
 		return common.Err("Error running playbook: %v", err)
 	}

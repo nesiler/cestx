@@ -60,7 +60,7 @@ func exportSSHKeyToHost(keyName, identifierType, identifier string) error {
 	return nil
 }
 
-func setupSSHKeyForHost(keyName, hostName, ip string) error {
+func setupSSHKeyForHost(keyName, hostName, ip string) error { // Add IP argument
 	if err := ensureSSHKeyExists(keyName); err != nil {
 		return common.Err("failed to create SSH key: %v", err)
 	}
