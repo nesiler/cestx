@@ -34,14 +34,17 @@ func registerService(service common.Service) {
 	serviceData, err := json.Marshal(service)
 	common.FailError(err, "")
 
-	err = rdb.Set(ctx, "service:"+service.ID, serviceData, 0).Err()
+	err = rdb.HSet(ctx, "service:"+service.ID, map[string]interface{}{
+		"data":   serviceData,
+		"status": "unknown",
+	}).Err()
 	common.FailError(err, "Redis error: %v")
 }
 
 func getServiceHandler(w http.ResponseWriter, r *http.Request) {
 	serviceID := r.URL.Path[len("/service/"):]
 
-	serviceData, err := rdb.Get(ctx, "service:"+serviceID).Result()
+	serviceData, err := rdb.HGet(ctx, "service:"+serviceID, "data").Result()
 	if err == redis.Nil {
 		http.Error(w, "Service not found", http.StatusNotFound)
 		return
