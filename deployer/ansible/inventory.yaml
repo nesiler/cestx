@@ -3,10 +3,10 @@ services:
     registry:
       ansible_host: 192.168.4.63
       ansible_ssh_private_key_file: ~/.ssh/master
-    logging-s:
+    logger-s:
       ansible_host: 192.168.4.64
       ansible_ssh_private_key_file: ~/.ssh/master
-    task-s:
+    taskmaster-s:
       ansible_host: 192.168.4.65
       ansible_ssh_private_key_file: ~/.ssh/master
     dynoxy-s:

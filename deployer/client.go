@@ -91,7 +91,7 @@ func watchForChanges(client *GitHubClient) {
 			// For each changed directory, deploy the corresponding service
 			for _, dir := range changedDirs {
 				if err := Deploy(dir); err != nil {
-					common.Warn("Error deploying %s: %v", dir, err)
+					common.Warn("%v: %s", err, dir)
 				} else {
 					common.Ok("Successfully deployed: %s", dir)
 					common.SendMessageToTelegram("Successfully deployed: " + dir)

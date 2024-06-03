@@ -1,6 +1,6 @@
 ---
 - name: Clean Up Services and SSH Keys
-  hosts: all
+  hosts: services
   remote_user: root
   become: true
 

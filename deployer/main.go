@@ -1,12 +1,13 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"os"
 
+	"github.com/goccy/go-yaml"
 	"github.com/joho/godotenv"
 	"github.com/nesiler/cestx/common"
-	"gopkg.in/yaml.v2"
 )
 
 // Host represents a single host in the inventory.
@@ -18,9 +19,9 @@ type Host struct {
 
 // Inventory represents the structure of the inventory YAML file.
 type Inventory struct {
-	All struct {
+	Services struct {
 		Hosts map[string]Host `yaml:"hosts"`
-	} `yaml:"all"`
+	} `yaml:"services"`
 }
 
 type Config struct {
@@ -35,6 +36,7 @@ type Config struct {
 
 var (
 	config *Config
+	hosts  []Host
 )
 
 func LoadConfig(filename string) error {
@@ -47,52 +49,39 @@ func LoadConfig(filename string) error {
 	return nil
 }
 
-// readInventory reads the inventory file and returns a map of hostnames to ansible_host values.
-// func readInventory(filePath string) (map[string]string, error) {
-// 	data, err := os.ReadFile(filePath)
-// 	common.FailError(err, "error reading inventory file: %v", filePath)
-
-// 	var inventory Inventory
-// 	err = yaml.Unmarshal(data, &inventory)
-// 	common.FailError(err, "error unmarshalling inventory: %v", filePath)
-
-// 	hosts := make(map[string]string)
-// 	for name, host := range inventory.All.Hosts {
-// 		common.Info("Found host %s with IP %s", name, host.AnsibleHost)
-// 		hosts[name] = host.AnsibleHost
-// 	}
-
-// 	return hosts, nil
-// }
-
-func readInventory(filePath string) ([]Host, error) {
+func readInventory(filePath string) error {
 	data, err := os.ReadFile(filePath)
 	common.FailError(err, "error reading inventory file: %v", filePath)
 
+	// Create a Decoder with map type that preserves order
+	decoder := yaml.NewDecoder(bytes.NewReader(data))
 	var inventory Inventory
-	err = yaml.Unmarshal(data, &inventory)
+	err = decoder.Decode(&inventory)
 	common.FailError(err, "error unmarshalling inventory: %v", filePath)
 
-	var orderedHosts []Host
-	for name, host := range inventory.All.Hosts {
-		common.Info("Found host %s with IP %s", name, host.AnsibleHost)
-		orderedHosts = append(orderedHosts, Host{
+	hosts = nil // Clear the hosts slice to start fresh
+	// Process "services" hosts
+	for name, host := range inventory.Services.Hosts {
+		common.Info("Found service host %s with IP %s", name, host.AnsibleHost)
+		hosts = append(hosts, Host{
 			Name:        name,
 			AnsibleHost: host.AnsibleHost,
 		})
 	}
 
-	return orderedHosts, nil
+	return nil
 }
 
 // handleSSHKeysAndServiceChecks handles SSH key setup and service checks
 func handleSSHKeysAndServiceChecks() {
-	inventoryPath := config.AnsiblePath + "/inventory.yaml"
-	hosts, err := readInventory(inventoryPath)
-	common.FailError(err, "Error reading inventory: %v")
+	common.Info("Checking started...")
+
+	// Print the list of hosts
+	for _, host := range hosts {
+		common.Info("Host: %s, IP: %s\n", host.Name, host.AnsibleHost)
+	}
 
 	for _, host := range hosts {
-		// Access host.Name and host.AnsibleHost directly
 		if !checkSSHKeyExported(host.Name) {
 			common.Info("Setting up SSH key for host %s\n", host.Name)
 			err := setupSSHKeyForHost("master", host.Name, host.AnsibleHost)
@@ -126,11 +115,14 @@ func main() {
 	err := LoadConfig("config.json")
 	common.FailError(err, "Error loading configuration: %v\n")
 
+	// 1.2 Load inventory
+	readInventory(config.AnsiblePath + "/inventory.yaml")
+
 	// 2. Initialize GitHub client
 	client := NewGitHubClient(config.GitHubToken)
 
 	// 3. Setup SSH Keys & Check Service Readiness
-	handleSSHKeysAndServiceChecks() // Run in a separate goroutine
+	handleSSHKeysAndServiceChecks()
 
 	// 4. Watch for changes and deploy
 	watchForChanges(client)

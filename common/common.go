@@ -112,7 +112,7 @@ func RegisterService(service *Service) error {
 
 	// Send the registration request to the registry
 	resp, err := http.Post("http://"+REGISTRY_HOST+":3434/register", "application/json", bytes.NewBuffer(updatedJsonData))
-	FailError(err, "")
+	Warn("Error registering service: %v\n", err)
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {

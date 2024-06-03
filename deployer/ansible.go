@@ -32,9 +32,6 @@ func runAnsiblePlaybook(playbookPath, host string, extraVars map[string]string) 
 
 // Deploy deploys a service using Ansible
 func Deploy(serviceName string) error {
-	inventoryPath := config.AnsiblePath + "/inventory.yaml"
-	hosts, err := readInventory(inventoryPath)
-	common.FailError(err, "Error reading inventory: %v")
 
 	// Find host by service name (assuming service name matches host name in inventory)
 	var targetHost *Host
@@ -59,7 +56,7 @@ func Deploy(serviceName string) error {
 		playbook = config.AnsiblePath + "/setup.yaml"
 	}
 
-	err = runAnsiblePlaybook(playbook, targetHost.AnsibleHost, extraVars)
+	err := runAnsiblePlaybook(playbook, targetHost.AnsibleHost, extraVars)
 	if err != nil {
 		return common.Err("Error running playbook: %v", err)
 	}
