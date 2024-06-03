@@ -24,7 +24,7 @@ func runAnsiblePlaybook(playbookPath, host string, extraVars map[string]string) 
 	// set inventory file
 	args = append(args, "-i", config.AnsiblePath+"/inventory.yaml")
 
-	common.Info("Running Ansible playbook: ansible-playbook %s", strings.Join(args, " "))
+	common.Out("Running Ansible playbook: ansible-playbook %s", strings.Join(args, " "))
 	cmd := exec.Command("ansible-playbook", args...)
 	cmd.Stdout = log.Writer()
 	cmd.Stderr = log.Writer()
@@ -48,17 +48,17 @@ func Deploy(serviceName string) error {
 		return common.Err("Error: Host not found for service %s", serviceName)
 	}
 
-	// Pass the service name as an extra variable to the playbook
-	extraVars := map[string]string{"service": serviceName}
 	playbook := config.AnsiblePath + "/update.yaml"
 
 	// Check if repository and service exist
-	repoExists, serviceExists := checkServiceExists(targetHost.AnsibleHost, extraVars) // Pass the host's IP address
+	repoExists, serviceExists := checkServiceExists(targetHost.Name) // Pass the host's IP address
 	if !repoExists || !serviceExists {
+		common.Warn("Service or Repo does not exist for host %s\n", targetHost.Name)
+		common.Info("Starting setup process for: %s\n", targetHost.Name)
 		playbook = config.AnsiblePath + "/setup.yaml"
 	}
 
-	err := runAnsiblePlaybook(playbook, targetHost.AnsibleHost, extraVars)
+	err := runAnsiblePlaybook(playbook, targetHost.AnsibleHost, map[string]string{"service": serviceName})
 	if err != nil {
 		return common.Err("Error running playbook: %v", err)
 	}
@@ -66,15 +66,15 @@ func Deploy(serviceName string) error {
 	return nil
 }
 
-func checkServiceExists(host string, extraVars map[string]string) (bool, bool) { // Now returns two booleans
+func checkServiceExists(host string) (bool, bool) { // Now returns two booleans
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 
-	args := []string{"-l", host, config.AnsiblePath + "/setup.yaml"} // Assuming the playbook is named check.yml
-	for key, value := range extraVars {
-		args = append(args, "-e", fmt.Sprintf("%s=%s", key, value))
-	}
+	args := []string{"-l", host, config.AnsiblePath + "/check.yaml"} // Assuming the playbook is named check.yml
+	args = append(args, "-e", "service="+host)
+	args = append(args, "-i", config.AnsiblePath+"/inventory.yaml")
 
+	common.Out("Running Ansible check playbook: ansible-playbook %s", strings.Join(args, " "))
 	cmd := exec.Command("ansible-playbook", args...)
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
@@ -87,7 +87,7 @@ func checkServiceExists(host string, extraVars map[string]string) (bool, bool) {
 	}
 
 	output := stdout.String()
-	common.Warn("Ansible check output: %s", output)
+	// common.Warn("Ansible check output: %s", output)
 	repoExists := strings.Contains(output, "Repository exists: True")
 	serviceActive := strings.Contains(output, "Service is active: True")
 

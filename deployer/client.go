@@ -41,6 +41,7 @@ func (c *GitHubClient) GetLatestCommit(owner, repo string) (string, error) {
 }
 
 func (client *GitHubClient) PullLatest(repoPath string) error {
+	common.SendMessageToTelegram("**DEPLOYER** ::: Deployer service updating itself")
 	cmd := exec.Command("git", "-C", repoPath, "pull")
 	output, err := cmd.CombinedOutput()
 	common.FailError(err, "output: %s", err, string(output))
@@ -49,6 +50,13 @@ func (client *GitHubClient) PullLatest(repoPath string) error {
 	cmd = exec.Command("go", "build", "-o", "deployer")
 	output, err = cmd.CombinedOutput()
 	common.FailError(err, "output: %s", err, string(output))
+	common.Ok("Built new binary: %s", string(output))
+
+	common.SendMessageToTelegram("**DEPLOYER** ::: Trying to restart deployer service ...")
+	cmd = exec.Command("systemctl", "restart", "deployer.service")
+	output, err = cmd.CombinedOutput()
+	common.FailError(err, "output: %s", err, string(output))
+
 	return nil
 }
 
@@ -91,6 +99,7 @@ func watchForChanges(client *GitHubClient) {
 			common.FailError(err, "Error getting changed directories")
 
 			common.Info("Changed directories: %v", changedDirs)
+			common.SendMessageToTelegram("**DEPLOYER** ::: Changed directories: " + strings.Join(changedDirs, ", "))
 
 			// For each changed directory, deploy the corresponding service
 			for _, dir := range changedDirs {
@@ -99,6 +108,7 @@ func watchForChanges(client *GitHubClient) {
 					common.Ok("Pulling latest changes for directory: %s", dir)
 					if err := client.PullLatest(config.RepoPath); err != nil {
 						common.Err("Error pulling latest changes for directory: %s: %v", dir, err)
+						common.SendMessageToTelegram("**DEPLOYER** ::: Error pulling latest changes for directory: " + dir)
 					}
 					common.Ok("Successfully pulled latest changes for directory: %s", dir)
 					common.SendMessageToTelegram("Successfully pulled latest changes for directory: " + dir)
@@ -109,7 +119,7 @@ func watchForChanges(client *GitHubClient) {
 					common.Warn("%v: %s", err, dir)
 				} else {
 					common.Ok("Successfully deployed: %s", dir)
-					common.SendMessageToTelegram("Successfully deployed: " + dir)
+					common.SendMessageToTelegram("**DEPLOYER** ::: Successfully deployed: " + dir)
 				}
 			}
 			latestCommit = commit // Update latest commit hash

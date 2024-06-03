@@ -3,7 +3,7 @@
   "repo_owner": "nesiler",
   "repo_name": "cestx",
   "repo_path": "/home/cestx",
-  "check_interval": 60,
+  "check_interval": 15,
   "ansible_path": "/home/cestx/deployer/ansible",
   "service_build_commands": {
     "registry": "go build -o registry && ./registry",

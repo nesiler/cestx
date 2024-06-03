@@ -78,8 +78,6 @@ func readInventory(filePath string) error {
 
 // handleSSHKeysAndServiceChecks handles SSH key setup and service checks
 func handleSSHKeysAndServiceChecks() {
-	common.Info("Checking started...")
-
 	// Sort hosts by priority
 	sort.Slice(hosts, func(i, j int) bool {
 		return hosts[i].Priority < hosts[j].Priority
@@ -87,9 +85,11 @@ func handleSSHKeysAndServiceChecks() {
 
 	for _, host := range hosts {
 		// Check if the service exists and if not, run the setup playbook
-		repoExists, serviceExists := checkServiceExists(host.Name, map[string]string{"service": host.Name})
+		repoExists, serviceExists := checkServiceExists(host.Name)
 		if !repoExists || !serviceExists {
-			common.Info("Setting up service for host %s\n", host.Name)
+			common.Warn("Service or Repo does not exist for host %s\n", host.Name)
+			common.Info("Starting setup process for: %s\n", host.Name)
+			common.SendMessageToTelegram("**DEPLOYER** ::: Starting setup process for: " + host.Name)
 
 			err := runAnsiblePlaybook(config.AnsiblePath+"/setup.yaml", host.Name, map[string]string{"service": host.Name})
 			if err != nil {
@@ -104,6 +104,7 @@ func handleSSHKeysAndServiceChecks() {
 				break // Key is already exported, exit the retry loop
 			}
 			common.Info("Setting up SSH key for host %s (attempt %d)\n", host.Name, retry+1)
+			common.SendMessageToTelegram("**DEPLOYER** ::: Setting up SSH key for host " + host.Name + " (attempt " + string(rune(retry+1)) + ")")
 			err := setupSSHKeyForHost("master", host.Name, host.AnsibleHost)
 			if err != nil {
 				common.Warn("Error setting up SSH keys for host %s: %v", host.Name, err)
@@ -111,8 +112,10 @@ func handleSSHKeysAndServiceChecks() {
 					time.Sleep(5 * time.Second) // Wait before retrying
 					continue
 				}
-				// return common.Err("Failed to set up SSH keys for host %s after %d attempts: %v", host.Name, maxRetries, err)
+				common.Err("Failed to set up SSH keys for host %s after %d attempts: %v", host.Name, maxRetries, err)
 			}
+			common.Ok("SSH key setup successful for host %s\n", host.Name)
+			common.SendMessageToTelegram("**DEPLOYER** ::: SSH key setup successful for host " + host.Name)
 			break // Key setup successful, exit the loop
 		}
 	}
@@ -120,6 +123,7 @@ func handleSSHKeysAndServiceChecks() {
 
 func main() {
 	common.Head("--DEPLOYER STARTS--")
+	common.SendMessageToTelegram("**DEPLOYER** ::: Service started at " + time.Now().String())
 	godotenv.Load("../.env")
 	godotenv.Load(".env")
 

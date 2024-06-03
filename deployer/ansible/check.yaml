@@ -11,13 +11,19 @@
       register: repo_status
 
     - name: Check if service is running
-      systemd:
-        name: "{{ service }}"
-      register: service_status
+      ansible.builtin.systemd_service:
+        name: "{{ service }}.service"
+      register: status
       ignore_errors: true # Don't fail the playbook if the service doesn't exist yet
 
     - name: Report Results
       debug:
         msg: |
           Repository exists: {{ repo_status.stat.exists }}
-          Service is active: {{ service_status.active | default(false) }}
+          Service is active: {{ status.status.ActiveState == 'active'}}
+
+    - name: Print output to file
+      ansible.builtin.copy:
+        content: "Repository exists: {{ repo_status.stat.exists }}, Service is active: {{ status.status.ActiveState == 'active'}}"
+        dest: /home/cestx/deployer/ansible/output
+      delegate_to: localhost
