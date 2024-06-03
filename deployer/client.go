@@ -44,6 +44,11 @@ func (client *GitHubClient) PullLatest(repoPath string) error {
 	cmd := exec.Command("git", "-C", repoPath, "pull")
 	output, err := cmd.CombinedOutput()
 	common.FailError(err, "output: %s", err, string(output))
+
+	// build and run this code again
+	cmd = exec.Command("go", "build", "-o", "deployer")
+	output, err = cmd.CombinedOutput()
+	common.FailError(err, "output: %s", err, string(output))
 	return nil
 }
 
@@ -81,10 +86,6 @@ func watchForChanges(client *GitHubClient) {
 			common.Ok("New commit detected: %s", commit)
 			common.SendMessageToTelegram("New commit detected: " + commit)
 
-			// Pull the latest changes from the repository
-			common.FailError(client.PullLatest(config.RepoPath), "Error pulling latest changes")
-			common.Ok("Pulled latest changes")
-
 			// Get the list of changed directories in the repository
 			changedDirs, err := client.GetChangedDirs(config.RepoPath, commit)
 			common.FailError(err, "Error getting changed directories")
@@ -93,6 +94,16 @@ func watchForChanges(client *GitHubClient) {
 
 			// For each changed directory, deploy the corresponding service
 			for _, dir := range changedDirs {
+				// Check if the directory is "deployer", skip deployment and pull locally and run this program again
+				if dir == "deployer" {
+					common.Ok("Pulling latest changes for directory: %s", dir)
+					if err := client.PullLatest(config.RepoPath); err != nil {
+						common.Err("Error pulling latest changes for directory: %s: %v", dir, err)
+					}
+					common.Ok("Successfully pulled latest changes for directory: %s", dir)
+					common.SendMessageToTelegram("Successfully pulled latest changes for directory: " + dir)
+					continue
+				}
 				common.Info("Trying to deploy: %s", dir)
 				if err := Deploy(dir); err != nil {
 					common.Warn("%v: %s", err, dir)
