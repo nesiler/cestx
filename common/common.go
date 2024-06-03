@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"os"
@@ -100,23 +101,24 @@ func JsonToService(jsonData []byte) (*Service, error) {
 }
 
 func RegisterService(service *Service) error {
-
 	// Marshal the updated service data
 	updatedJsonData, err := json.Marshal(service)
-	FailError(err, "Error marshalling Service JSON data: %v\n")
+	FailError(err, "error marshalling updated service data: %v")
 
 	// Check if the registry host is set
 	if REGISTRY_HOST == "" {
-		Fatal("Error finding REGISTRY_HOST: %v\n")
+		return Err("REGISTRY_HOST environment variable not set")
 	}
 
 	// Send the registration request to the registry
 	resp, err := http.Post("http://"+REGISTRY_HOST+":3434/register", "application/json", bytes.NewBuffer(updatedJsonData))
-	Warn("Error registering service: %v\n", err)
+	FailError(err, "error sending registration request: %v")
 	defer resp.Body.Close()
 
+	// Check the response status code
 	if resp.StatusCode != http.StatusOK {
-		Fatal("Failed to register service, received status code: %d\n", resp.StatusCode)
+		body, _ := io.ReadAll(resp.Body) // Read the response body for more details
+		return fmt.Errorf("failed to register service, received status code: %d, response: %s", resp.StatusCode, body)
 	}
 
 	return nil
