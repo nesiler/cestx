@@ -34,6 +34,12 @@
         repo: "https://github.com/nesiler/cestx"
         dest: "/home/cestx"
 
+    - name: Pull latest changes
+      git:
+        repo: "https://github.com/nesiler/CESTX"
+        dest: "/home/cestx"
+        update: yes
+
     - name: Copy .env file to hosts
       ansible.builtin.copy:
         src: "/home/cestx/.env"

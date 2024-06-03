@@ -26,7 +26,8 @@ func main() {
 
 	// Register the service with the registry
 	common.REGISTRY_HOST = os.Getenv("REGISTRY_HOST")
-	common.RegisterService(service)
+	err = common.RegisterService(service)
+	common.Warn("Failed to register service: %v\n", err)
 
 	// Setup health check endpoint
 	http.HandleFunc("/health", common.HealthHandler())
