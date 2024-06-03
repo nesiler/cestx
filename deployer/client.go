@@ -78,18 +78,22 @@ func watchForChanges(client *GitHubClient) {
 		common.FailError(err, "Error getting latest commit: %v\n")
 
 		if commit != latestCommit {
-			common.Ok("New commit detected: %s\n", commit)
+			common.Ok("New commit detected: %s", commit)
 			common.SendMessageToTelegram("New commit detected: " + commit)
 
 			// Pull the latest changes from the repository
 			common.FailError(client.PullLatest(config.RepoPath), "Error pulling latest changes")
+			common.Ok("Pulled latest changes")
 
 			// Get the list of changed directories in the repository
 			changedDirs, err := client.GetChangedDirs(config.RepoPath, commit)
 			common.FailError(err, "Error getting changed directories")
 
+			common.Info("Changed directories: %v", changedDirs)
+
 			// For each changed directory, deploy the corresponding service
 			for _, dir := range changedDirs {
+				common.Info("Trying to deploy: %s", dir)
 				if err := Deploy(dir); err != nil {
 					common.Warn("%v: %s", err, dir)
 				} else {

@@ -124,6 +124,10 @@ func main() {
 	godotenv.Load(".env")
 
 	common.PYTHON_API_HOST = os.Getenv("PYTHON_API_HOST")
+	if common.PYTHON_API_HOST == "" {
+		common.Warn("PYTHON_API_HOST not set, using default value")
+		common.PYTHON_API_HOST = "http://192.168.4.99"
+	}
 
 	// 1. Load configuration
 	err := LoadConfig("config.json")
