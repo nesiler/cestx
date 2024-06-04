@@ -2,9 +2,9 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -45,44 +45,45 @@ func (c *GitHubClient) GetLatestCommit(owner, repo string) (string, error) {
 }
 
 func (client *GitHubClient) PullLatest(repoPath string) error {
-	// Check if the latest commit is the same as the current commit
-	latestRemoteCommit, err := client.GetLatestCommit(config.RepoOwner, config.RepoName)
-	common.FailError(err, "Error getting latest commit from remote: %v\n")
-
-	// Get the current commit ID (from FETCH_HEAD)
-	fetchHeadPath := filepath.Join(repoPath, ".git", "FETCH_HEAD") // Use filepath for correct paths
-	fetchHeadContent, err := os.ReadFile(fetchHeadPath)
+	// Get the current commit ID
+	currentCommit, err := getCurrentCommit(repoPath)
 	if err != nil {
-		return common.Err("Error reading FETCH_HEAD: %v", err)
+		return fmt.Errorf("failed to get current commit ID: %w", err)
 	}
-	currentCommit := strings.Fields(string(fetchHeadContent))[0] // Extract the first word (commit hash)
 
-	// If the current commit is already the latest, nothing to do.
-	if latestRemoteCommit == currentCommit {
-		common.Info("Already up-to-date\n")
+	latestCommit, err := client.GetLatestCommit(config.RepoOwner, config.RepoName)
+	if err != nil {
+		return fmt.Errorf("failed to get latest commit ID: %w", err)
+	}
+
+	if currentCommit == latestCommit {
+		common.Info("Already at the latest commit: %s", currentCommit)
 		return nil
 	}
 
-	common.SendMessageToTelegram("**DEPLOYER** ::: Deployer service updating itself")
-	cmd := exec.Command("git", "-C", repoPath, "pull")
-	output, err := cmd.CombinedOutput()
-	common.FailError(err, "output: %s", err, string(output))
+	common.Info("Pulling latest changes from GitHub...")
+	cmd := exec.Command("git", "-C", repoPath, "pull", "origin", "main")
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("failed to pull latest changes: %w", err)
+	}
 
-	// build and run this code again
-	cmd = exec.Command("go", "build", "-o", "deployer")
-	output, err = cmd.CombinedOutput()
-	common.FailError(err, "output: %s", err, string(output))
-	common.Ok("Built new binary: %s", string(output))
+	// Build new binary
+	cmd = exec.Command("go", "build", "-o", "cestx")
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("failed to build new binary: %w", err)
+	}
 
-	latestCommit, err := client.GetLatestCommit(config.RepoOwner, config.RepoName)
-	common.FailError(err, "Error getting latest commit: %v\n")
-	writeLatestCommit(latestCommit)
+	common.Info("Restarting deployer service...")
+	cmd = exec.Command("systemctl", "restart", "cestx-deployer")
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("failed to restart deployer service: %w", err)
+	}
 
-	common.SendMessageToTelegram("**DEPLOYER** ::: Trying to restart deployer service ...")
-	cmd = exec.Command("systemctl", "restart", "deployer.service")
-	output, err = cmd.CombinedOutput()
-	common.FailError(err, "output: %s", err, string(output))
-
+	os.Exit(0)
 	return nil
 }
 
@@ -107,6 +108,15 @@ func (c *GitHubClient) GetChangedDirs(repoPath, latestCommit string) ([]string, 
 	return dirs, nil
 }
 
+func getCurrentCommit(repoPath string) (string, error) {
+	cmd := exec.Command("git", "-C", repoPath, "rev-parse", "HEAD")
+	output, err := cmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("failed to get current commit: %w", err)
+	}
+	return strings.TrimSpace(string(output)), nil
+}
+
 func readLatestCommit() (string, error) {
 	data, err := os.ReadFile(latestCommitFile)
 	if err != nil {
@@ -124,50 +134,57 @@ func writeLatestCommit(commit string) error {
 
 // watchForChanges watches for new commits and triggers deployments
 func watchForChanges(client *GitHubClient) {
-	latestCommit, err := readLatestCommit()
-	common.FailError(err, "Error reading latest commit from file")
-
 	for {
-		// Get the latest commit from GitHub
-		commit, err := client.GetLatestCommit(config.RepoOwner, config.RepoName)
-		common.FailError(err, "Error getting latest commit: %v\n")
-
-		if commit != latestCommit {
-			common.Ok("New commit detected: %s", commit)
-			common.SendMessageToTelegram("New commit detected: " + commit)
-
-			// Get the list of changed directories in the repository
-			changedDirs, err := client.GetChangedDirs(config.RepoPath, commit)
-			common.FailError(err, "Error getting changed directories")
-
-			common.Info("Changed directories: %v", changedDirs)
-			common.SendMessageToTelegram("**DEPLOYER** ::: Changed directories: " + strings.Join(changedDirs, ", "))
-
-			// For each changed directory, deploy the corresponding service
-			for _, dir := range changedDirs {
-				// Check if the directory is "deployer", skip deployment and pull locally and run this program again
-				if dir == "deployer" {
-					continue
-				}
-				common.Info("Trying to deploy: %s", dir)
-				if err := Deploy(dir); err != nil {
-					common.Warn("%v: %s", err, dir)
-				} else {
-					common.Ok("Successfully deployed: %s", dir)
-					common.SendMessageToTelegram("**DEPLOYER** ::: Successfully deployed: " + dir)
-				}
-			}
-
-			if err := client.PullLatest(config.RepoPath); err != nil {
-				common.Err("Error pulling latest changes for directory: %s: %v", config.RepoPath, err)
-				common.SendMessageToTelegram("**DEPLOYER** ::: Error pulling latest changes for directory: " + config.RepoPath)
-			}
-
-			latestCommit = commit // Update latest commit hash
-			err = writeLatestCommit(latestCommit)
-			common.FailError(err, "Error writing latest commit to file")
+		latestCommit, err := client.GetLatestCommit(config.RepoOwner, config.RepoName)
+		if err != nil {
+			common.Err("Error getting latest commit: %v", err)
+			time.Sleep(time.Duration(config.CheckInterval) * time.Second)
+			continue
 		}
 
-		time.Sleep(time.Second * time.Duration(config.CheckInterval))
+		lastDeployedCommit, err := readLatestCommit()
+		if err != nil {
+			common.Err("Error reading last deployed commit: %v", err)
+			time.Sleep(time.Duration(config.CheckInterval) * time.Second)
+			continue
+		}
+
+		if latestCommit != lastDeployedCommit {
+			common.Info("New commit detected: %s", latestCommit)
+
+			changedDirs, err := client.GetChangedDirs(config.RepoPath, latestCommit)
+			if err != nil {
+				common.Err("Error getting changed directories: %v", err)
+				time.Sleep(time.Duration(config.CheckInterval) * time.Second)
+				continue
+			}
+
+			for _, dir := range changedDirs {
+				if dir == "deployer" {
+					common.Info("Deployer code updated, pulling changes...")
+					err := client.PullLatest(config.RepoPath)
+					if err != nil {
+						common.Err("Error updating deployer: %v", err)
+					}
+					// No need to continue the loop after updating the deployer
+					break
+				} else {
+					common.Info("Deploying service: %s", dir)
+					common.SendMessageToTelegram("**DEPLOYER** ::: Deploying service: " + dir)
+					err = Deploy(dir)
+					if err != nil {
+						common.Err("Error deploying service %s: %v", dir, err)
+					}
+				}
+			}
+
+			if err := writeLatestCommit(latestCommit); err != nil {
+				common.Err("Error writing latest commit to file: %v", err)
+			}
+		} else {
+			common.Info("No changes detected")
+		}
+
+		time.Sleep(time.Duration(config.CheckInterval) * time.Second)
 	}
 }

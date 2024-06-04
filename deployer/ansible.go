@@ -1,9 +1,10 @@
 package main
 
 import (
-	"bytes"
+	"bufio"
 	"fmt"
 	"log"
+	"os"
 	"os/exec"
 	"strings"
 
@@ -66,30 +67,33 @@ func Deploy(serviceName string) error {
 	return nil
 }
 
-func checkServiceExists(host string) (bool, bool) { // Now returns two booleans
-	var stdout bytes.Buffer
-	var stderr bytes.Buffer
-
-	args := []string{"-l", host, config.AnsiblePath + "/check.yaml"} // Assuming the playbook is named check.yml
-	args = append(args, "-e", "service="+host)
-	args = append(args, "-i", config.AnsiblePath+"/inventory.yaml")
-
-	common.Out("Running Ansible check playbook: ansible-playbook %s", strings.Join(args, " "))
-	cmd := exec.Command("ansible-playbook", args...)
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-
-	err := cmd.Run()
+func checkServiceExists(host string) (bool, bool) {
+	playbook := config.AnsiblePath + "/check.yaml"
+	err := runAnsiblePlaybook(playbook, host, map[string]string{"service": host})
 	if err != nil {
-		common.Err("Error running Ansible check playbook: %v", err)
-		common.Err("Stderr: %s", stderr.String())
-		return false, false
+		common.Err("Error running playbook 'check.yaml': %v", err)
+		return false, false // Assume service doesn't exist on error
 	}
 
-	output := stdout.String()
-	// common.Warn("Ansible check output: %s", output)
-	repoExists := strings.Contains(output, "Repository exists: True")
-	serviceActive := strings.Contains(output, "Service is active: True")
+	// Read output from /tmp/check_result.txt
+	file, err := os.Open("/tmp/check_result.txt")
+	if err != nil {
+		common.Err("Error opening check result file: %v", err)
+		return false, false
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	var repoExists, serviceActive bool
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.Contains(line, "Repository exists: true") {
+			repoExists = true
+		}
+		if strings.Contains(line, "Service is active: true") {
+			serviceActive = true
+		}
+	}
 
 	return repoExists, serviceActive
 }
