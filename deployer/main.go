@@ -146,7 +146,8 @@ func main() {
 	// 4. Watch for changes and deploy
 	// Start the cron scheduler
 	c.Start()
-
-	// Schedule checkUp function to run periodically
 	c.AddFunc("@every 30s", watchForChanges)
+
+	// Keep process running
+	select {}
 }
