@@ -144,11 +144,9 @@ func main() {
 	// 3. Setup SSH Keys & Check Service Readiness
 	handleSSHKeysAndServiceChecks()
 
-	// 4. Watch for changes and deploy
-	// Start the cron scheduler
-	c.Start()
-	c.AddFunc("@every "+string(config.CheckInterval)+"s", watchForChanges)
+	ticker := time.NewTicker(time.Second * 60)
+	for range ticker.C {
+		watchForChanges()
+	}
 
-	// Keep process running
-	select {}
 }
