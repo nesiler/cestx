@@ -48,7 +48,7 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 async def deployer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     # Restart starter.service
-    await sender(message="!!! SYSTEM RESTARTING!!!")
+    await sender(message="!!! SYSTEM RESTARTING !!!")
     os.system("systemctl restart starter.service")
 
     await asyncio.sleep(10)
