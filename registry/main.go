@@ -8,6 +8,7 @@ import (
 	"strconv"
 
 	"github.com/go-redis/redis/v8"
+	"github.com/joho/godotenv"
 	"github.com/nesiler/cestx/common"
 	"github.com/robfig/cron/v3"
 )
@@ -32,6 +33,9 @@ var (
 )
 
 func main() {
+	godotenv.Load("../.env")
+	godotenv.Load(".env")
+
 	// Load configuration file
 	configFile, err := os.ReadFile("config.json")
 	common.FailError(err, "error reading config file")

@@ -75,11 +75,11 @@ func checkServiceExists(host string) bool {
 	}
 
 	// Wait for the playbook to finish
-	cmd := exec.Command("ansible-playbook", "--wait", "/tmp/check_result.yaml")
-	if err := cmd.Run(); err != nil {
-		common.Err("Error waiting for playbook to finish: %v", err)
-		return false
-	}
+	// cmd := exec.Command("ansible-playbook", "--wait", "/tmp/check_result.yaml")
+	// if err := cmd.Run(); err != nil {
+	// 	common.Err("Error waiting for playbook to finish: %v", err)
+	// 	return false
+	// }
 
 	// Read output from /tmp/check_result.txt
 	file, err := os.Open("/tmp/check_result.txt")
@@ -93,7 +93,7 @@ func checkServiceExists(host string) bool {
 	scanner.Scan()
 	result := scanner.Text() == "True"
 
-	common.Head("%s service exists: %v ", host, result)
+	common.Warn("%s service exists: %v ", host, result)
 
 	return result
 }

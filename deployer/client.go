@@ -162,10 +162,10 @@ func watchForChanges(client *GitHubClient) {
 			for _, dir := range changedDirs {
 				if dir == "deployer" {
 					common.Info("Deployer code updated, pulling changes...")
-					err := client.PullLatest(config.RepoPath)
-					if err != nil {
-						common.Err("Error updating deployer: %v", err)
-					}
+					// err := client.PullLatest(config.RepoPath)
+					// if err != nil {
+					// 	common.Err("Error updating deployer: %v", err)
+					// }
 					// No need to continue the loop after updating the deployer
 					break
 				} else {
