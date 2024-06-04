@@ -89,9 +89,6 @@ func getCurrentCommit(repoPath string) (string, error) {
 
 // watchForChanges watches for new commits and triggers deployments
 func watchForChanges() {
-	// Ideally, load latest known commit from a more persistent storage
-	deployerChanged := false
-
 	latestCommit, err := client.GetLatestCommit(config.RepoOwner, config.RepoName)
 	if err != nil {
 		common.Err("Failed to fetch the latest commit: %v", err)
@@ -108,18 +105,15 @@ func watchForChanges() {
 		}
 
 		for _, dir := range changedDirs {
-			if dir != "deployer" {
-				common.Info("Deploying changes for directory: %s", dir)
-				err := Deploy(dir)
-				if err != nil {
-					common.Err("Failed to deploy service %s: %v", dir, err)
-				}
-			} else if dir == "deployer" {
-				deployerChanged = true
+			if dir == "deployer" {
+				starterService()
+				common.FailError(err, "error restarting starter service: %v")
 			}
-		}
-		if deployerChanged {
-			starterService()
+			common.Info("Deploying changes for directory: %s", dir)
+			err := Deploy(dir)
+			if err != nil {
+				common.Err("Failed to deploy service %s: %v", dir, err)
+			}
 		}
 		lastKnownCommit = latestCommit
 	}
