@@ -8,7 +8,7 @@ from threading import Thread
 
 
 # Load environment variables from .env file
-load_dotenv()
+load_dotenv("../.env")
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 CHAT_ID = os.getenv("CHAT_ID")
 

@@ -10,6 +10,9 @@ WORKDIR /app
 # Copy the current directory contents into the container at /app
 COPY . /app
 
+# Copt the .env file to the container
+COPY ../.env /app
+
 # Expose the port Flask will run on
 EXPOSE 5005
 
