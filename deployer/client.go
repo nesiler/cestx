@@ -61,7 +61,23 @@ func (c *GitHubClient) GetChangedDirs(repoPath, latestCommit string) ([]string, 
 	cmd.Stderr = &stderr
 	err := cmd.Run()
 	if err != nil {
-		return nil, fmt.Errorf("error running git diff: %s, %s", stderr.String(), err)
+		// Check for specific error message
+		if strings.Contains(stderr.String(), "fatal: bad object") {
+			common.Warn("Commit not found locally. Fetching latest changes...")
+			// Fetch the latest changes from the remote
+			fetchCmd := exec.Command("git", "-C", repoPath, "fetch")
+			if err := fetchCmd.Run(); err != nil {
+				return nil, fmt.Errorf("error fetching latest changes: %s", err)
+			}
+
+			// Retry the diff command
+			err = cmd.Run() // Retry the original command
+			if err != nil { // If still error after fetching
+				return nil, fmt.Errorf("error running git diff after fetch: %s, %s", stderr.String(), err)
+			}
+		} else {
+			return nil, fmt.Errorf("error running git diff: %s, %s", stderr.String(), err)
+		}
 	}
 
 	output := out.Bytes()
