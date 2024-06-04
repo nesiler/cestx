@@ -47,15 +47,17 @@ func (c *GitHubClient) GetLatestCommit(owner, repo string) (string, error) {
 }
 
 func (c *GitHubClient) GetChangedDirs(repoPath, latestCommit string) ([]string, error) {
-	currentCommit, err := getCurrentCommit(repoPath)
-	if err != nil {
-		return nil, err
-	}
+	common.Warn("Getting changed directories between %s and %s", lastKnownCommit, latestCommit)
+	common.Out("Checking for changes in %s", repoPath)
+	// currentCommit, err := getCurrentCommit(repoPath)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	cmd := exec.Command("git", "-C", repoPath, "diff", "--name-only", currentCommit, latestCommit)
+	cmd := exec.Command("git", "-C", repoPath, "diff", "--name-only", lastKnownCommit, latestCommit)
 	var out bytes.Buffer
 	cmd.Stdout = &out
-	err = cmd.Run()
+	err := cmd.Run()
 	if err != nil {
 		return nil, fmt.Errorf("git diff failed: %w", err)
 	}
