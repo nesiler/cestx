@@ -63,25 +63,8 @@ func (client *GitHubClient) PullLatest(repoPath string) error {
 		return nil
 	}
 
-	common.Info("Pulling latest changes from GitHub...")
-	cmd := exec.Command("git", "pull")
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("failed to pull latest changes: %w", err)
-	}
-
-	// Build new binary
-	cmd = exec.Command("go", "build", "-o", "deployer")
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("failed to build new binary: %w", err)
-	}
-	common.Out("New binary built successfully")
-
 	common.Info("Restarting deployer service...")
-	cmd = exec.Command("systemctl", "restart", "deployer.service")
+	cmd := exec.Command("systemctl", "restart", "starter.service")
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("failed to restart deployer service: %w", err)
 	}

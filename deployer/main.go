@@ -28,7 +28,6 @@ type Inventory struct {
 }
 
 type Config struct {
-	GitHubToken          string            `json:"github_token"`
 	RepoOwner            string            `json:"repo_owner"`
 	RepoName             string            `json:"repo_name"`
 	RepoPath             string            `json:"repo_path"`
@@ -125,6 +124,7 @@ func main() {
 	godotenv.Load(".env")
 
 	common.PYTHON_API_HOST = os.Getenv("PYTHON_API_HOST")
+
 	if common.PYTHON_API_HOST == "" {
 		common.Warn("PYTHON_API_HOST not set, using default value")
 		common.PYTHON_API_HOST = "http://192.168.4.99"
@@ -139,7 +139,7 @@ func main() {
 	readInventory(config.AnsiblePath + "/inventory.yaml")
 
 	// 2. Initialize GitHub client
-	client := NewGitHubClient(config.GitHubToken)
+	client := NewGitHubClient(os.Getenv("GITHUB_TOKEN"))
 
 	// 3. Setup SSH Keys & Check Service Readiness
 	handleSSHKeysAndServiceChecks()
