@@ -97,6 +97,8 @@ func watchForChanges() {
 	}
 
 	if latestCommit != lastKnownCommit {
+		common.Info("New commit detected: %s", latestCommit)
+		common.SendMessageToTelegram("**DEPLOYER** ::: New commit detected: " + latestCommit)
 		changedDirs, err := client.GetChangedDirs(config.RepoPath, latestCommit)
 		if err != nil {
 			common.Err("Failed to get changed directories: %v", err)

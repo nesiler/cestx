@@ -145,13 +145,9 @@ func main() {
 	// 3. Setup SSH Keys & Check Service Readiness
 	handleSSHKeysAndServiceChecks()
 
-	// Start the cron scheduler
+	c.AddFunc("@every 10s", watchForChanges)
 	c.Start()
 
-	// Schedule checkUp function to run periodically
-	c.AddFunc("@every 10s", watchForChanges)
-
-	// Block main goroutine indefinitely
 	select {}
 
 }
