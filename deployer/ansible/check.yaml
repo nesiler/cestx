@@ -22,10 +22,10 @@
           Repository exists: {{ repo_status.stat.exists }}
           Service is active: {{ status.status.ActiveState == 'active'}}
 
-    - name: Print output to file
-      ansible.builtin.copy:
-        content: "Repository exists: {{ repo_status.stat.exists }}, Service is active: {{ status.status.ActiveState == 'active'}}"
-        dest: /tmp/latest_commit.txt
-        force: yes
-        mode: "0666"
-      delegate_to: localhost
+    # - name: Print output to file
+    #   ansible.builtin.copy:
+    #     content: "Repository exists: {{ repo_status.stat.exists }}, Service is active: {{ status.status.ActiveState == 'active'}}"
+    #     dest: /tmp/latest_commit.txt
+    #     force: yes
+    #     mode: "0666"
+    #   delegate_to: localhost
