@@ -87,39 +87,111 @@ func getCurrentCommit(repoPath string) (string, error) {
 	return strings.TrimSpace(string(output)), nil
 }
 
-// watchForChanges watches for new commits and triggers deployments
+func pullLatestChanges(repoPath string) error {
+	cmd := exec.Command("git", "-C", repoPath, "pull")
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &out
+	err := cmd.Run()
+	if err != nil {
+		common.Err("Failed to pull latest changes: %s, %v", out.String(), err)
+		return fmt.Errorf("failed to pull latest changes: %w, output: %s", err, out.String())
+	}
+	common.Info("Latest changes pulled successfully: %s", out.String())
+	return nil
+}
+
+func checkAndRestartDeployer(changedDirs []string, repoPath string) bool {
+	for _, dir := range changedDirs {
+		if dir == "deployer" {
+			if err := pullLatestChanges(repoPath); err != nil {
+				common.Err("Failed to pull changes for deployer: %v", err)
+				continue
+			}
+			starterService()
+			return true
+		}
+	}
+	return false
+}
+
 func watchForChanges() {
 	latestCommit, err := client.GetLatestCommit(config.RepoOwner, config.RepoName)
 	if err != nil {
-		common.Err("Failed to fetch the latest commit: %v", err)
+		common.Err("Failed to fetch latest commit: %v", err)
 		return
 	}
 
-	if latestCommit != lastKnownCommit {
-		common.Info("New commit detected: %s", latestCommit)
-		common.SendMessageToTelegram("**DEPLOYER** ::: New commit detected: " + latestCommit)
-		changedDirs, err := client.GetChangedDirs(config.RepoPath, latestCommit)
-		if err != nil {
-			common.Err("Failed to get changed directories: %v", err)
-			return
-		}
-
-		for _, dir := range changedDirs {
-			if dir == "deployer" {
-				starterService()
-				common.FailError(err, "error restarting starter service: %v")
-			}
-			common.Info("Deploying changes for directory: %s", dir)
-			err := Deploy(dir)
-			if err != nil {
-				common.Err("Failed to deploy service %s: %v", dir, err)
-			}
-		}
-		lastKnownCommit = latestCommit
+	// Pull latest changes regardless, to keep deployer updated
+	if err := pullLatestChanges(config.RepoPath); err != nil {
+		return
 	}
 
-	common.Out("No changes detected")
+	// Fetch and compute diff
+	changedDirs, err := client.GetChangedDirs(config.RepoPath, latestCommit)
+	if err != nil {
+		common.Err("Failed to get changed directories: %v", err)
+		return
+	}
+
+	// First handle potential updates to the deployer itself
+	if checkAndRestartDeployer(changedDirs, config.RepoPath) {
+		return // Deployer was updated and is restarting
+	}
+
+	// Handle other service updates
+	for _, dir := range changedDirs {
+		common.Info("Deploying changes for directory: %s", dir)
+		err := Deploy(dir) // Ensure Deploy checks the host and service status
+		if err != nil {
+			common.Err("Failed to deploy service %s: %v", dir, err)
+		}
+	}
+
+	// Save last known commit to prevent reprocessing the same commit on restart
+	saveLastKnownCommit(latestCommit)
 }
+
+func saveLastKnownCommit(commit string) {
+	err := os.WriteFile("last_known_commit.txt", []byte(commit), 0644)
+	if err != nil {
+		common.Err("Failed to save last known commit: %v", err)
+	}
+}
+
+// // watchForChanges watches for new commits and triggers deployments
+// func watchForChanges() {
+// 	latestCommit, err := client.GetLatestCommit(config.RepoOwner, config.RepoName)
+// 	if err != nil {
+// 		common.Err("Failed to fetch the latest commit: %v", err)
+// 		return
+// 	}
+
+// 	if latestCommit != lastKnownCommit {
+// 		common.Info("New commit detected: %s", latestCommit)
+// 		common.SendMessageToTelegram("**DEPLOYER** ::: New commit detected: " + latestCommit)
+// 		changedDirs, err := client.GetChangedDirs(config.RepoPath, latestCommit)
+// 		if err != nil {
+// 			common.Err("Failed to get changed directories: %v", err)
+// 			return
+// 		}
+
+// 		for _, dir := range changedDirs {
+// 			if dir == "deployer" {
+// 				starterService()
+// 				common.FailError(err, "error restarting starter service: %v")
+// 			}
+// 			common.Info("Deploying changes for directory: %s", dir)
+// 			err := Deploy(dir)
+// 			if err != nil {
+// 				common.Err("Failed to deploy service %s: %v", dir, err)
+// 			}
+// 		}
+// 		lastKnownCommit = latestCommit
+// 	}
+
+// 	common.Out("No changes detected")
+// }
 
 func starterService() {
 	common.Info("Deployer changes detected; pulling updates and restarting...")
