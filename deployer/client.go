@@ -156,6 +156,7 @@ func watchForChanges(client *GitHubClient) {
 			common.Info("New commit detected: %s", latestCommit)
 
 			changedDirs, err := client.GetChangedDirs(config.RepoPath, latestCommit)
+			common.Out("Changed directories: %v", changedDirs)
 			if err != nil {
 				common.Err("Error getting changed directories: %v", err)
 				time.Sleep(time.Duration(config.CheckInterval) * time.Second)
@@ -172,7 +173,7 @@ func watchForChanges(client *GitHubClient) {
 					// No need to continue the loop after updating the deployer
 					break
 				} else {
-					common.Info("Deploying service: %s", dir)
+					common.Out("Deploying service: %s", dir)
 					common.SendMessageToTelegram("**DEPLOYER** ::: Deploying service: " + dir)
 					err = Deploy(dir)
 					if err != nil {
