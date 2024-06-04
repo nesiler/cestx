@@ -132,6 +132,7 @@ func main() {
 		common.PYTHON_API_HOST = "http://192.168.4.99"
 	}
 	common.SendMessageToTelegram("**DEPLOYER** ::: Service started")
+	client = NewGitHubClient(os.Getenv("GITHUB_TOKEN"))
 
 	// 1. Load configuration
 	err := LoadConfig("config.json")

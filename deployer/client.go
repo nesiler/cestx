@@ -17,6 +17,8 @@ type GitHubClient struct {
 	client *github.Client
 }
 
+var client *GitHubClient
+
 func NewGitHubClient(token string) *GitHubClient {
 	common.Info("Creating GitHub client")
 	ctx := context.Background()
@@ -116,7 +118,6 @@ func getCurrentCommit(repoPath string) (string, error) {
 
 // watchForChanges watches for new commits and triggers deployments
 func watchForChanges() {
-	client := NewGitHubClient(os.Getenv("GITHUB_TOKEN"))
 	latestCommit, err := client.GetLatestCommit(config.RepoOwner, config.RepoName)
 	if err != nil {
 		common.Err("Error getting latest commit: %v", err)
