@@ -55,6 +55,10 @@ func (client *GitHubClient) PullLatest(repoPath string) error {
 	common.FailError(err, "output: %s", err, string(output))
 	common.Ok("Built new binary: %s", string(output))
 
+	latestCommit, err := client.GetLatestCommit(config.RepoOwner, config.RepoName)
+	common.FailError(err, "Error getting latest commit: %v\n")
+	writeLatestCommit(latestCommit)
+
 	common.SendMessageToTelegram("**DEPLOYER** ::: Trying to restart deployer service ...")
 	cmd = exec.Command("systemctl", "restart", "deployer.service")
 	output, err = cmd.CombinedOutput()
@@ -129,8 +133,6 @@ func watchForChanges(client *GitHubClient) {
 						common.Err("Error pulling latest changes for directory: %s: %v", dir, err)
 						common.SendMessageToTelegram("**DEPLOYER** ::: Error pulling latest changes for directory: " + dir)
 					}
-					common.Ok("Successfully pulled latest changes for directory: %s", dir)
-					common.SendMessageToTelegram("Successfully pulled latest changes for directory: " + dir)
 					continue
 				}
 				common.Info("Trying to deploy: %s", dir)
