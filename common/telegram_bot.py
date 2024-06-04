@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import Application, CallbackQueryHandler, CommandHandler, ContextTypes, MessageHandler, filters
 from threading import Thread
-
+import asyncio  # Import asyncio for subprocess handling
 
 # Load environment variables from .env file
 load_dotenv()
@@ -39,10 +39,47 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Parses the CallbackQuery and updates the message text."""
     query = update.callback_query
     await query.answer()
-    await query.edit_message_text(text=f"Selected option: {query.data}")
     
+    if query.data == "1":
+        await deployer(update, context)
+    elif query.data == "2":
+        await status(update, context)
+
+
 async def deployer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    update.message.reply_text("Deploying service...")
+    # Restart starter.service
+    sender(message="Restarting the system service: 'starter.service'")
+    os.system("systemctl restart starter.service")
+    
+
+    # Get deployer.service status
+    sender(message="Checking deployer.service status...")
+
+    proc = await asyncio.create_subprocess_shell(
+        "systemctl status deployer.service",
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE
+    )
+
+    stdout, stderr = await proc.communicate()
+    
+    # Check if there was an error getting the status
+    if stderr:
+        error_message = f"Error checking deployer.service status:\n{stderr.decode()}"
+        sender(message=error_message)
+        return
+
+    # Send the status message
+    status_message = stdout.decode()
+
+    # Optionally, filter the status output for brevity (if needed)
+    filtered_status = "\n".join(status_message.split("\n")[:5])  # Get first 5 lines
+    sender(message=f"deployer.service status:\n`\n{filtered_status}\n`")
+
+
+async def status(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    sender(message="System status: ...")
+    
 
 async def sender(message: str) -> None:
     application = Application.builder().token(TELEGRAM_TOKEN).build()

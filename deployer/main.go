@@ -147,7 +147,7 @@ func main() {
 	// 4. Watch for changes and deploy
 	// Start the cron scheduler
 	c.Start()
-	c.AddFunc("@every 30s", watchForChanges)
+	c.AddFunc("@every "+string(config.CheckInterval)+"s", watchForChanges)
 
 	// Keep process running
 	select {}

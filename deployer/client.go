@@ -3,10 +3,8 @@ package main
 import (
 	"context"
 	"fmt"
-	"os"
 	"os/exec"
 	"strings"
-	"time"
 
 	"github.com/google/go-github/v35/github"
 	"github.com/nesiler/cestx/common"
@@ -44,37 +42,6 @@ func (c *GitHubClient) GetLatestCommit(owner, repo string) (string, error) {
 	return *commits[0].SHA, nil
 }
 
-func (client *GitHubClient) PullLatest(repoPath string) error {
-	// Get the current commit ID
-	currentCommit, err := getCurrentCommit(repoPath)
-	if err != nil {
-		return fmt.Errorf("failed to get current commit ID: %w", err)
-	}
-	common.Head("Current commit: %s", currentCommit)
-
-	latestCommit, err := client.GetLatestCommit(config.RepoOwner, config.RepoName)
-	if err != nil {
-		return fmt.Errorf("failed to get latest commit ID: %w", err)
-	}
-	common.Head("Latest commit: %s", latestCommit)
-
-	if currentCommit == latestCommit {
-		common.Info("Already at the latest commit: %s", currentCommit)
-		return nil
-	}
-
-	time.Sleep(1 * time.Second)
-
-	common.Info("Restarting deployer service...")
-	cmd := exec.Command("systemctl", "restart", "starter.service")
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("failed to restart deployer service: %w", err)
-	}
-
-	os.Exit(0)
-	return nil
-}
-
 func (c *GitHubClient) GetChangedDirs(repoPath, latestCommit string) ([]string, error) {
 	cmd := exec.Command("git", "-C", repoPath, "diff", "--name-only", latestCommit+"^!")
 	output, err := cmd.Output()
@@ -104,17 +71,6 @@ func getCurrentCommit(repoPath string) (string, error) {
 	}
 	return strings.TrimSpace(string(output)), nil
 }
-
-// func readLatestCommit() (string, error) {
-// 	cmd := exec.Command("cat", config.RepoPath+"/.git/FETCH_HEAD")
-// 	output, err := cmd.Output()
-// 	if err != nil {
-// 		return "", fmt.Errorf("failed to read latest commit: %w", err)
-// 	}
-
-// 	commit := strings.Split(string(output), " ")[0]
-// 	return commit, nil
-// }
 
 // watchForChanges watches for new commits and triggers deployments
 func watchForChanges() {
@@ -148,7 +104,6 @@ func watchForChanges() {
 				continue
 			}
 		}
-		client.PullLatest(config.RepoPath)
 	}
 	common.Info("No changes detected")
 }
