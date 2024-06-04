@@ -48,13 +48,11 @@ async def button(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 async def deployer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     # Restart starter.service
-    sender(message="Restarting the system service: 'starter.service'")
+    await sender(message="!!! SYSTEM RESTARTING!!!")
     os.system("systemctl restart starter.service")
+
+    await asyncio.sleep(10)
     
-
-    # Get deployer.service status
-    sender(message="Checking deployer.service status...")
-
     proc = await asyncio.create_subprocess_shell(
         "systemctl status deployer.service",
         stdout=asyncio.subprocess.PIPE,
@@ -65,8 +63,8 @@ async def deployer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     
     # Check if there was an error getting the status
     if stderr:
-        error_message = f"Error checking deployer.service status:\n{stderr.decode()}"
-        sender(message=error_message)
+        error_message = f"!!! Error checking deployer.service status:\n{stderr.decode()} !!!"
+        await sender(message=error_message)
         return
 
     # Send the status message
@@ -74,11 +72,11 @@ async def deployer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     # Optionally, filter the status output for brevity (if needed)
     filtered_status = "\n".join(status_message.split("\n")[:5])  # Get first 5 lines
-    sender(message=f"deployer.service status:\n`\n{filtered_status}\n`")
+    await sender(message=f"!!! deployer.service status:\n`\n{filtered_status}\n` !!!")
 
 
 async def status(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    sender(message="System status: ...")
+    await sender(message="System status: ...")
     
 
 async def sender(message: str) -> None:
