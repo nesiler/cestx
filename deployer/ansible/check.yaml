@@ -11,7 +11,7 @@
       register: repo_status
 
     - name: Check if service is running
-      ansible.builtin.systemd_service:
+      ansible.builtin.systemd:
         name: "{{ service }}.service"
       register: status
       ignore_errors: true
@@ -24,5 +24,4 @@
       ansible.builtin.copy:
         content: "{{ repo_status.stat.exists and status.status.ActiveState == 'active'}}"
         dest: /tmp/check_result.txt
-        mode: 0644
       delegate_to: localhost

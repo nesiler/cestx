@@ -74,6 +74,13 @@ func checkServiceExists(host string) bool {
 		return false
 	}
 
+	// Wait for the playbook to finish
+	cmd := exec.Command("ansible-playbook", "--wait", "/tmp/check_result.yaml")
+	if err := cmd.Run(); err != nil {
+		common.Err("Error waiting for playbook to finish: %v", err)
+		return false
+	}
+
 	// Read output from /tmp/check_result.txt
 	file, err := os.Open("/tmp/check_result.txt")
 	if err != nil {
@@ -85,6 +92,8 @@ func checkServiceExists(host string) bool {
 	scanner := bufio.NewScanner(file) // File contains just "True" or "False"
 	scanner.Scan()
 	result := scanner.Text() == "True"
+
+	common.Head("%s service exists: %v ", host, result)
 
 	return result
 }
