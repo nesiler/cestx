@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"os"
 	"strconv"
-	"time"
 
 	"github.com/go-redis/redis/v8"
 	"github.com/nesiler/cestx/common"
@@ -45,7 +44,7 @@ func main() {
 		common.Warn("PYTHON_API_HOST not set, using default value")
 		common.PYTHON_API_HOST = "http://192.168.4.99"
 	}
-	common.SendMessageToTelegram("**REGISTRY** ::: Service started at " + time.Now().String())
+	common.SendMessageToTelegram("**REGISTRY** ::: Service started")
 
 	// Initialize Redis client using config data
 	redisConfig, ok := configData.ExternalServices["redis"]
