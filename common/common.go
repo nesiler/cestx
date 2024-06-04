@@ -84,7 +84,10 @@ func SendMessageToTelegram(message string) {
 
 	// Send the POST request to the Python API
 	resp, err := http.Post("http://"+PYTHON_API_HOST+":5005/send", "application/json", bytes.NewBuffer(jsonData))
-	Warn("send message error: %v", err)
+	if err != nil {
+		Warn("send message error: %v", err)
+	}
+
 	defer resp.Body.Close()
 
 	// Check for success response
