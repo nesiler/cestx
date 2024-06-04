@@ -109,7 +109,7 @@ func getCurrentCommit(repoPath string) (string, error) {
 }
 
 // watchForChanges watches for new commits and triggers deployments
-func watchForChanges() {
+func watchForChanges(deployDone chan bool) {
 	latestCommit, err := client.GetLatestCommit(config.RepoOwner, config.RepoName)
 	if err != nil {
 		common.Err("Error getting latest commit: %v", err)
@@ -126,19 +126,20 @@ func watchForChanges() {
 		changedDirs, err := client.GetChangedDirs(config.RepoPath, latestCommit)
 		common.Out("Changed directories: %v", changedDirs)
 		common.SendMessageToTelegram("**DEPLOYER** ::: New Commit :: Changed directories: " + strings.Join(changedDirs, ", "))
-		if err != nil {
-			common.Err("Error getting changed directories: %v", err)
-		}
-
 		for _, dir := range changedDirs {
 			if dir != "deployer" {
-				err = Deploy(dir)
-				if err != nil {
-					common.Err("Error deploying service %s: %v", dir, err)
-				}
-			} else {
-				common.Info("Skipping deployer directory")
-				continue
+				deployDir := dir // Assign the value of dir to a new variable deployDir
+				go func() {
+					err = Deploy(deployDir) // Use deployDir instead of dir
+					if err != nil {
+						common.Warn("Error while deploying %s: %v", deployDir, err)                                              // Use deployDir instead of dir
+						common.SendMessageToTelegram("**DEPLOYER** ::: Error while deploying " + deployDir + ": " + err.Error()) // Use deployDir instead of dir
+						return
+					}
+					common.Ok("Deployment of %s completed", deployDir)                                         // Use deployDir instead of dir
+					common.SendMessageToTelegram("**DEPLOYER** ::: Deployment of " + deployDir + " completed") // Use deployDir instead of dir
+					deployDone <- true
+				}()
 			}
 		}
 	}

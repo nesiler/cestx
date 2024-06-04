@@ -144,9 +144,16 @@ func main() {
 	// 3. Setup SSH Keys & Check Service Readiness
 	handleSSHKeysAndServiceChecks()
 
+	// Create a channel to signal deployment completion
+	deployDone := make(chan bool)
+
 	ticker := time.NewTicker(time.Second * 10)
 	for range ticker.C {
-		watchForChanges()
+		watchForChanges(deployDone)
+	}
+
+	for {
+		<-deployDone
 	}
 
 }
