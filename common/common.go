@@ -73,7 +73,7 @@ func SendMessageToTelegram(message string) {
 	// Create the JSON payload
 	payload := map[string]string{"message": message}
 	jsonData, err := json.Marshal(payload)
-	FailError(err, "Error marshalling JSON data: %v\n")
+	Warn("Error marshalling JSON data: %v", err)
 
 	// Get the Python API host from environment variables
 	if PYTHON_API_HOST == "" {
@@ -82,12 +82,12 @@ func SendMessageToTelegram(message string) {
 
 	// Send the POST request to the Python API
 	resp, err := http.Post("http://"+PYTHON_API_HOST+":5005/send", "application/json", bytes.NewBuffer(jsonData))
-	FailError(err, "send message error: %v\n")
+	Warn("send message error: %v", err)
 	defer resp.Body.Close()
 
 	// Check for success response
 	if resp.StatusCode != http.StatusOK {
-		Fatal("Failed to send message, received status code: %d\n", resp.StatusCode)
+		Warn("Failed to send message, received status code: %d\n", resp.StatusCode)
 	}
 }
 

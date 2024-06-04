@@ -144,16 +144,10 @@ func main() {
 	// 3. Setup SSH Keys & Check Service Readiness
 	handleSSHKeysAndServiceChecks()
 
-	// Create a channel to signal deployment completion
-	deployDone := make(chan bool)
+	// Start watching for changes directly
+	go watchForChanges() // Run in a separate goroutine to avoid blocking main
 
-	ticker := time.NewTicker(time.Second * 10)
-	for range ticker.C {
-		watchForChanges(deployDone)
-	}
-
-	for {
-		<-deployDone
-	}
+	// Block main goroutine indefinitely
+	select {}
 
 }

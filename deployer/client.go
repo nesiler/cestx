@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/google/go-github/v35/github"
 	"github.com/nesiler/cestx/common"
@@ -46,56 +47,32 @@ func (c *GitHubClient) GetLatestCommit(owner, repo string) (string, error) {
 }
 
 func (c *GitHubClient) GetChangedDirs(repoPath, latestCommit string) ([]string, error) {
-	if latestCommit == "" {
-		return nil, fmt.Errorf("no parent commit found for the initial commit")
-	}
-
-	if _, err := os.Stat(filepath.Join(repoPath, ".git")); os.IsNotExist(err) {
-		return nil, fmt.Errorf("not a git repository: %s", repoPath)
-	}
-
-	cmd := exec.Command("git", "-C", repoPath, "diff", "--name-only", latestCommit+"^!")
-	var out bytes.Buffer
-	var stderr bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &stderr
-	err := cmd.Run()
+	currentCommit, err := getCurrentCommit(repoPath)
 	if err != nil {
-		// Check for specific error message
-		if strings.Contains(stderr.String(), "fatal: bad object") {
-			common.Warn("Commit not found locally. Fetching latest changes...")
-			// Fetch the latest changes from the remote
-			fetchCmd := exec.Command("git", "-C", repoPath, "fetch")
-			if err := fetchCmd.Run(); err != nil {
-				return nil, fmt.Errorf("error fetching latest changes: %s", err)
-			}
-
-			// Retry the diff command
-			err = cmd.Run() // Retry the original command
-			if err != nil { // If still error after fetching
-				return nil, fmt.Errorf("error running git diff after fetch: %s, %s", stderr.String(), err)
-			}
-		} else {
-			return nil, fmt.Errorf("error running git diff: %s, %s", stderr.String(), err)
-		}
+		return nil, err
 	}
 
-	output := out.Bytes()
-	common.Warn("Changed dirs output: %s", output)
+	cmd := exec.Command("git", "-C", repoPath, "diff", "--name-only", currentCommit, latestCommit)
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	err = cmd.Run()
+	if err != nil {
+		return nil, fmt.Errorf("git diff failed: %w", err)
+	}
 
-	changedFiles := strings.Split(strings.TrimSpace(string(output)), "\n")
-	dirSet := make(map[string]struct{})
+	changedFiles := strings.Split(out.String(), "\n")
+	changedDirs := make(map[string]bool)
 	for _, file := range changedFiles {
-		parts := strings.Split(file, "/")
-		if len(parts) > 0 {
-			dirSet[parts[0]] = struct{}{}
+		if dir := filepath.Dir(file); dir != "." {
+			changedDirs[dir] = true
 		}
 	}
 
 	var dirs []string
-	for dir := range dirSet {
+	for dir := range changedDirs {
 		dirs = append(dirs, dir)
 	}
+
 	return dirs, nil
 }
 
@@ -109,39 +86,63 @@ func getCurrentCommit(repoPath string) (string, error) {
 }
 
 // watchForChanges watches for new commits and triggers deployments
-func watchForChanges(deployDone chan bool) {
-	latestCommit, err := client.GetLatestCommit(config.RepoOwner, config.RepoName)
-	if err != nil {
-		common.Err("Error getting latest commit: %v", err)
-	}
+func watchForChanges() {
+	ticker := time.NewTicker(time.Second * 15)
+	defer ticker.Stop()
 
-	lastDeployedCommit, err := getCurrentCommit(config.RepoPath)
-	if err != nil {
-		common.Err("Error reading last deployed commit: %v", err)
-	}
+	// Ideally, load latest known commit from a more persistent storage
+	var lastKnownCommit string
+	deployerChanged := false
 
-	if latestCommit != lastDeployedCommit {
-		common.Info("New commit detected: %s", latestCommit)
+	for {
+		select {
+		case <-ticker.C:
+			latestCommit, err := client.GetLatestCommit(config.RepoOwner, config.RepoName)
+			if err != nil {
+				common.Err("Failed to fetch the latest commit: %v", err)
+				continue
+			}
 
-		changedDirs, err := client.GetChangedDirs(config.RepoPath, latestCommit)
-		common.Out("Changed directories: %v", changedDirs)
-		common.SendMessageToTelegram("**DEPLOYER** ::: New Commit :: Changed directories: " + strings.Join(changedDirs, ", "))
-		for _, dir := range changedDirs {
-			if dir != "deployer" {
-				deployDir := dir // Assign the value of dir to a new variable deployDir
-				go func() {
-					err = Deploy(deployDir) // Use deployDir instead of dir
-					if err != nil {
-						common.Warn("Error while deploying %s: %v", deployDir, err)                                              // Use deployDir instead of dir
-						common.SendMessageToTelegram("**DEPLOYER** ::: Error while deploying " + deployDir + ": " + err.Error()) // Use deployDir instead of dir
-						return
+			if latestCommit != lastKnownCommit {
+				changedDirs, err := client.GetChangedDirs(config.RepoPath, latestCommit)
+				if err != nil {
+					common.Err("Failed to get changed directories: %v", err)
+					continue
+				}
+
+				for _, dir := range changedDirs {
+					if dir != "deployer" {
+						common.Info("Deploying changes for directory: %s", dir)
+						err := Deploy(dir)
+						if err != nil {
+							common.Err("Failed to deploy service %s: %v", dir, err)
+						}
+					} else if dir == "deployer" {
+						deployerChanged = true
 					}
-					common.Ok("Deployment of %s completed", deployDir)                                         // Use deployDir instead of dir
-					common.SendMessageToTelegram("**DEPLOYER** ::: Deployment of " + deployDir + " completed") // Use deployDir instead of dir
-					deployDone <- true
-				}()
+				}
+				if deployerChanged {
+					starterService()
+				}
+				lastKnownCommit = latestCommit
 			}
 		}
 	}
-	common.Info("No changes detected")
+}
+
+func starterService() {
+	common.Info("Deployer changes detected; pulling updates and restarting...")
+
+	// Restart the starter.service to apply changes
+	cmd := exec.Command("systemctl", "restart", "starter.service")
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	err := cmd.Run()
+	if err != nil {
+		common.Err("Failed to restart starter.service: %v", err)
+	}
+
+	// it should already be restarted, but just in case, sleep for a few seconds
+	time.Sleep(5 * time.Second)
+
 }
