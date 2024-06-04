@@ -120,7 +120,7 @@ func handleSSHKeysAndServiceChecks() {
 }
 
 func main() {
-	common.Head("--DEPLOYER STARTS--")
+	common.Head("---DEPLOYER STARTS---")
 	godotenv.Load("../.env")
 	godotenv.Load(".env")
 

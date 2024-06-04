@@ -5,6 +5,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/joho/godotenv"
 	"github.com/nesiler/cestx/common"
 )
 
@@ -36,6 +37,13 @@ func serviceTest() {
 
 func telegramTest() {
 	//get time and send to telegram as message
+	godotenv.Load("../.env")
+	godotenv.Load(".env")
+
+	common.TELEGRAM_TOKEN = os.Getenv("TELEGRAM_TOKEN")
+	common.CHAT_ID = os.Getenv("CHAT_ID")
+	common.PYTHON_API_HOST = os.Getenv("PYTHON_API_HOST")
+
 	for i := 0; i < 5; i++ {
 		message := time.Now().Format("2006-01-02 15:04:05")
 		common.SendMessageToTelegram(message)
@@ -47,7 +55,7 @@ func telegramTest() {
 func main() {
 	// serviceTest()
 	// envFinderTest()
-	// // telegramTest()
+	telegramTest()
 	// keyPath := fmt.Sprintf("%s/.ssh/%s", os.Getenv("HOME"), "master")
 	// if _, err := os.Stat(keyPath); os.IsNotExist(err) {
 	// 	// print error message
