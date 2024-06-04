@@ -106,7 +106,7 @@ func checkUp() {
 	// Get all keys that start with "service:"
 	keys, err := rdb.Keys(ctx, "service:*").Result()
 	if err != nil {
-		common.Fatal("Error fetching service keys from Redis: %v\n", err)
+		common.Warn("Error fetching service keys from Redis: %v\n", err)
 	}
 
 	for _, key := range keys {
