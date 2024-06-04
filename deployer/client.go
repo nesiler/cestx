@@ -13,8 +13,6 @@ import (
 	"golang.org/x/oauth2"
 )
 
-const latestCommitFile = "/tmp/latest_commit.txt"
-
 type GitHubClient struct {
 	client *github.Client
 }
@@ -105,73 +103,51 @@ func getCurrentCommit(repoPath string) (string, error) {
 	return strings.TrimSpace(string(output)), nil
 }
 
-func readLatestCommit() (string, error) {
-	data, err := os.ReadFile(latestCommitFile)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return "", nil // If the file does not exist, return an empty string
-		}
-		return "", err
-	}
-	return strings.TrimSpace(string(data)), nil
-}
+// func readLatestCommit() (string, error) {
+// 	cmd := exec.Command("cat", config.RepoPath+"/.git/FETCH_HEAD")
+// 	output, err := cmd.Output()
+// 	if err != nil {
+// 		return "", fmt.Errorf("failed to read latest commit: %w", err)
+// 	}
 
-func writeLatestCommit(commit string) error {
-	return os.WriteFile(latestCommitFile, []byte(commit), 0644)
-}
+// 	commit := strings.Split(string(output), " ")[0]
+// 	return commit, nil
+// }
 
 // watchForChanges watches for new commits and triggers deployments
-func watchForChanges(client *GitHubClient) {
-	for {
-		latestCommit, err := client.GetLatestCommit(config.RepoOwner, config.RepoName)
+func watchForChanges() {
+	client := NewGitHubClient(os.Getenv("GITHUB_TOKEN"))
+	latestCommit, err := client.GetLatestCommit(config.RepoOwner, config.RepoName)
+	if err != nil {
+		common.Err("Error getting latest commit: %v", err)
+	}
+
+	lastDeployedCommit, err := getCurrentCommit(config.RepoPath)
+	if err != nil {
+		common.Err("Error reading last deployed commit: %v", err)
+	}
+
+	if latestCommit != lastDeployedCommit {
+		common.Info("New commit detected: %s", latestCommit)
+
+		changedDirs, err := client.GetChangedDirs(config.RepoPath, latestCommit)
+		common.Out("Changed directories: %v", changedDirs)
 		if err != nil {
-			common.Err("Error getting latest commit: %v", err)
-			time.Sleep(time.Duration(config.CheckInterval) * time.Second)
-			continue
+			common.Err("Error getting changed directories: %v", err)
 		}
 
-		lastDeployedCommit, err := readLatestCommit()
-		if err != nil {
-			common.Err("Error reading last deployed commit: %v", err)
-			time.Sleep(time.Duration(config.CheckInterval) * time.Second)
-			continue
-		}
-
-		if latestCommit != lastDeployedCommit {
-			common.Info("New commit detected: %s", latestCommit)
-
-			changedDirs, err := client.GetChangedDirs(config.RepoPath, latestCommit)
-			common.Out("Changed directories: %v", changedDirs)
-			if err != nil {
-				common.Err("Error getting changed directories: %v", err)
-				time.Sleep(time.Duration(config.CheckInterval) * time.Second)
+		for _, dir := range changedDirs {
+			if dir != "deployer" {
+				err = Deploy(dir)
+				if err != nil {
+					common.Err("Error deploying service %s: %v", dir, err)
+				}
+			} else {
+				common.Info("Skipping deployer directory")
 				continue
 			}
-
-			for _, dir := range changedDirs {
-				if dir == "deployer" {
-					common.Info("Deployer code updated, pulling changes...")
-					err := client.PullLatest(config.RepoPath)
-					if err != nil {
-						common.Err("Error updating deployer: %v", err)
-					}
-					// No need to continue the loop after updating the deployer
-					break
-				} else {
-					err = Deploy(dir)
-					if err != nil {
-						common.Err("Error deploying service %s: %v", dir, err)
-					}
-				}
-			}
-
-			if err := writeLatestCommit(latestCommit); err != nil {
-				common.Err("Error writing latest commit to file: %v", err)
-			}
-		} else {
-			common.Info("No changes detected")
 		}
-
-		time.Sleep(time.Duration(config.CheckInterval) * time.Second)
+		client.PullLatest(config.RepoPath)
 	}
+	common.Info("No changes detected")
 }

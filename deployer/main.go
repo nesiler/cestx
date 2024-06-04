@@ -9,13 +9,14 @@ import (
 
 	"github.com/joho/godotenv"
 	"github.com/nesiler/cestx/common"
+	"github.com/robfig/cron/v3"
 	"gopkg.in/yaml.v2"
 )
 
 // Host represents a single host in the inventory.
 type Host struct {
 	Name                     string `yaml:"name"`
-	Ip              string `yaml:"ansible_host"`
+	Ip                       string `yaml:"ansible_host"`
 	AnsibleSSHPrivateKeyFile string `yaml:"ansible_ssh_private_key_file"`
 	Priority                 int    `yaml:"priority"` // Add Priority field
 }
@@ -39,6 +40,7 @@ type Config struct {
 var (
 	config *Config
 	hosts  []Host
+	c      = cron.New()
 )
 
 func LoadConfig(filename string) error {
@@ -66,9 +68,9 @@ func readInventory(filePath string) error {
 	for name, host := range inventory.Services.Hosts {
 		common.Info("Found service host %s with IP %s", name, host.Ip)
 		hosts = append(hosts, Host{
-			Name:        name,
-			Ip: host.Ip,
-			Priority:    host.Priority,
+			Name:     name,
+			Ip:       host.Ip,
+			Priority: host.Priority,
 		})
 	}
 
@@ -138,12 +140,14 @@ func main() {
 	// 1.2 Load inventory
 	readInventory(config.AnsiblePath + "/inventory.yaml")
 
-	// 2. Initialize GitHub client
-	client := NewGitHubClient(os.Getenv("GITHUB_TOKEN"))
-
 	// 3. Setup SSH Keys & Check Service Readiness
 	handleSSHKeysAndServiceChecks()
 
 	// 4. Watch for changes and deploy
-	watchForChanges(client)
+	// Start the cron scheduler
+	c.Start()
+
+	// Schedule checkUp function to run periodically
+	c.AddFunc("@every 1m", watchForChanges)
+
 }
