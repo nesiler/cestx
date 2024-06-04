@@ -70,7 +70,7 @@ func (client *GitHubClient) PullLatest(repoPath string) error {
 	}
 
 	// Build new binary
-	cmd = exec.Command("go", "build", "-o", "cestx")
+	cmd = exec.Command("go", "build", "-o", "deployer")
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
@@ -78,7 +78,7 @@ func (client *GitHubClient) PullLatest(repoPath string) error {
 	}
 
 	common.Info("Restarting deployer service...")
-	cmd = exec.Command("systemctl", "restart", "cestx-deployer")
+	cmd = exec.Command("systemctl", "restart", "deployer.service")
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("failed to restart deployer service: %w", err)
 	}
@@ -162,10 +162,10 @@ func watchForChanges(client *GitHubClient) {
 			for _, dir := range changedDirs {
 				if dir == "deployer" {
 					common.Info("Deployer code updated, pulling changes...")
-					// err := client.PullLatest(config.RepoPath)
-					// if err != nil {
-					// 	common.Err("Error updating deployer: %v", err)
-					// }
+					err := client.PullLatest(config.RepoPath)
+					if err != nil {
+						common.Err("Error updating deployer: %v", err)
+					}
 					// No need to continue the loop after updating the deployer
 					break
 				} else {

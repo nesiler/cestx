@@ -21,7 +21,7 @@
         path: "/etc/systemd/system/{{ inventory_hostname }}.service"
         state: absent
 
-    - name: Clean authorized_keys file
-      ansible.builtin.file:
-        path: "/root/.ssh/authorized_keys"
-        state: absent
+    # - name: Clean authorized_keys file
+    #   ansible.builtin.file:
+    #     path: "/root/.ssh/authorized_keys"
+    #     state: absent
