@@ -50,11 +50,13 @@ func (client *GitHubClient) PullLatest(repoPath string) error {
 	if err != nil {
 		return fmt.Errorf("failed to get current commit ID: %w", err)
 	}
+	common.Head("Current commit: %s", currentCommit)
 
 	latestCommit, err := client.GetLatestCommit(config.RepoOwner, config.RepoName)
 	if err != nil {
 		return fmt.Errorf("failed to get latest commit ID: %w", err)
 	}
+	common.Head("Latest commit: %s", latestCommit)
 
 	if currentCommit == latestCommit {
 		common.Info("Already at the latest commit: %s", currentCommit)
@@ -62,7 +64,7 @@ func (client *GitHubClient) PullLatest(repoPath string) error {
 	}
 
 	common.Info("Pulling latest changes from GitHub...")
-	cmd := exec.Command("git", "-C", repoPath, "pull", "origin", "main")
+	cmd := exec.Command("git", "pull")
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
@@ -76,6 +78,7 @@ func (client *GitHubClient) PullLatest(repoPath string) error {
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("failed to build new binary: %w", err)
 	}
+	common.Out("New binary built successfully")
 
 	common.Info("Restarting deployer service...")
 	cmd = exec.Command("systemctl", "restart", "deployer.service")
