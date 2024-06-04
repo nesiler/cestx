@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"os"
 	"os/exec"
 	"strings"
 	"time"
@@ -10,6 +11,8 @@ import (
 	"github.com/nesiler/cestx/common"
 	"golang.org/x/oauth2"
 )
+
+const latestCommitFile = "/tmp/latest_commit.txt"
 
 type GitHubClient struct {
 	client *github.Client
@@ -81,9 +84,25 @@ func (c *GitHubClient) GetChangedDirs(repoPath, latestCommit string) ([]string, 
 	return dirs, nil
 }
 
+func readLatestCommit() (string, error) {
+	data, err := os.ReadFile(latestCommitFile)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return "", nil // If the file does not exist, return an empty string
+		}
+		return "", err
+	}
+	return strings.TrimSpace(string(data)), nil
+}
+
+func writeLatestCommit(commit string) error {
+	return os.WriteFile(latestCommitFile, []byte(commit), 0644)
+}
+
 // watchForChanges watches for new commits and triggers deployments
 func watchForChanges(client *GitHubClient) {
-	var latestCommit string
+	latestCommit, err := readLatestCommit()
+	common.FailError(err, "Error reading latest commit from file")
 
 	for {
 		// Get the latest commit from GitHub
@@ -123,6 +142,8 @@ func watchForChanges(client *GitHubClient) {
 				}
 			}
 			latestCommit = commit // Update latest commit hash
+			err = writeLatestCommit(latestCommit)
+			common.FailError(err, "Error writing latest commit to file")
 		}
 
 		time.Sleep(time.Second * time.Duration(config.CheckInterval))
