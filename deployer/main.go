@@ -131,7 +131,7 @@ func main() {
 		common.Warn("PYTHON_API_HOST not set, using default value")
 		common.PYTHON_API_HOST = "http://192.168.4.99"
 	}
-	common.SendMessageToTelegram("**DEPLOYER** ::: Service started at " + time.Now().String())
+	common.SendMessageToTelegram("**DEPLOYER** ::: Service started")
 
 	// 1. Load configuration
 	err := LoadConfig("config.json")

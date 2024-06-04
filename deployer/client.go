@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -44,6 +45,24 @@ func (c *GitHubClient) GetLatestCommit(owner, repo string) (string, error) {
 }
 
 func (client *GitHubClient) PullLatest(repoPath string) error {
+	// Check if the latest commit is the same as the current commit
+	latestRemoteCommit, err := client.GetLatestCommit(config.RepoOwner, config.RepoName)
+	common.FailError(err, "Error getting latest commit from remote: %v\n")
+
+	// Get the current commit ID (from FETCH_HEAD)
+	fetchHeadPath := filepath.Join(repoPath, ".git", "FETCH_HEAD") // Use filepath for correct paths
+	fetchHeadContent, err := os.ReadFile(fetchHeadPath)
+	if err != nil {
+		return common.Err("Error reading FETCH_HEAD: %v", err)
+	}
+	currentCommit := strings.Fields(string(fetchHeadContent))[0] // Extract the first word (commit hash)
+
+	// If the current commit is already the latest, nothing to do.
+	if latestRemoteCommit == currentCommit {
+		common.Info("Already up-to-date\n")
+		return nil
+	}
+
 	common.SendMessageToTelegram("**DEPLOYER** ::: Deployer service updating itself")
 	cmd := exec.Command("git", "-C", repoPath, "pull")
 	output, err := cmd.CombinedOutput()
@@ -128,11 +147,6 @@ func watchForChanges(client *GitHubClient) {
 			for _, dir := range changedDirs {
 				// Check if the directory is "deployer", skip deployment and pull locally and run this program again
 				if dir == "deployer" {
-					common.Ok("Pulling latest changes for directory: %s", dir)
-					if err := client.PullLatest(config.RepoPath); err != nil {
-						common.Err("Error pulling latest changes for directory: %s: %v", dir, err)
-						common.SendMessageToTelegram("**DEPLOYER** ::: Error pulling latest changes for directory: " + dir)
-					}
 					continue
 				}
 				common.Info("Trying to deploy: %s", dir)
@@ -143,6 +157,12 @@ func watchForChanges(client *GitHubClient) {
 					common.SendMessageToTelegram("**DEPLOYER** ::: Successfully deployed: " + dir)
 				}
 			}
+
+			if err := client.PullLatest(config.RepoPath); err != nil {
+				common.Err("Error pulling latest changes for directory: %s: %v", config.RepoPath, err)
+				common.SendMessageToTelegram("**DEPLOYER** ::: Error pulling latest changes for directory: " + config.RepoPath)
+			}
+
 			latestCommit = commit // Update latest commit hash
 			err = writeLatestCommit(latestCommit)
 			common.FailError(err, "Error writing latest commit to file")
