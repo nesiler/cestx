@@ -45,7 +45,11 @@ func (c *GitHubClient) GetLatestCommit(owner, repo string) (string, error) {
 func (c *GitHubClient) GetChangedDirs(repoPath, latestCommit string) ([]string, error) {
 	cmd := exec.Command("git", "-C", repoPath, "diff", "--name-only", latestCommit+"^!")
 	output, err := cmd.Output()
-	common.FailError(err, "")
+	common.Warn("Changed dirs output: %s", output)
+	if err != nil {
+		common.Warn("Error getting changed dirs: %v", err)
+		return nil, err
+	}
 
 	changedFiles := strings.Split(strings.TrimSpace(string(output)), "\n")
 	dirSet := make(map[string]struct{})
@@ -89,6 +93,7 @@ func watchForChanges() {
 
 		changedDirs, err := client.GetChangedDirs(config.RepoPath, latestCommit)
 		common.Out("Changed directories: %v", changedDirs)
+		common.SendMessageToTelegram("**DEPLOYER** ::: New Commit :: Changed directories: " + strings.Join(changedDirs, ", "))
 		if err != nil {
 			common.Err("Error getting changed directories: %v", err)
 		}
