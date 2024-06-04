@@ -148,6 +148,5 @@ func main() {
 	c.Start()
 
 	// Schedule checkUp function to run periodically
-	c.AddFunc("@every 1m", watchForChanges)
-
+	c.AddFunc("@every 30s", watchForChanges)
 }
