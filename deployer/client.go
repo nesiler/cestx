@@ -63,7 +63,7 @@ func (client *GitHubClient) PullLatest(repoPath string) error {
 		return nil
 	}
 
-	time.Sleep(3 * time.Second)
+	time.Sleep(1 * time.Second)
 
 	common.Info("Restarting deployer service...")
 	cmd := exec.Command("systemctl", "restart", "starter.service")

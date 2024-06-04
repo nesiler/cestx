@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"time"
 
 	"github.com/nesiler/cestx/common"
 )
@@ -75,6 +76,8 @@ func checkServiceExists(host string) bool {
 		common.Err("Error running playbook 'check.yaml': %v", err)
 		return false
 	}
+
+	time.Sleep(1 * time.Second)
 
 	// Read output from /tmp/check_result.txt
 	file, err := os.Open("/tmp/check_result.txt")
