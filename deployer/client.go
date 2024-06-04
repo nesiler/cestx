@@ -1,9 +1,12 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 
 	"github.com/google/go-github/v35/github"
@@ -43,13 +46,26 @@ func (c *GitHubClient) GetLatestCommit(owner, repo string) (string, error) {
 }
 
 func (c *GitHubClient) GetChangedDirs(repoPath, latestCommit string) ([]string, error) {
-	cmd := exec.Command("git", "-C", repoPath, "diff", "--name-only", latestCommit+"^!")
-	output, err := cmd.Output()
-	common.Warn("Changed dirs output: %s", output)
-	if err != nil {
-		common.Warn("Error getting changed dirs: %v", err)
-		return nil, err
+	if latestCommit == "" {
+		return nil, fmt.Errorf("no parent commit found for the initial commit")
 	}
+
+	if _, err := os.Stat(filepath.Join(repoPath, ".git")); os.IsNotExist(err) {
+		return nil, fmt.Errorf("not a git repository: %s", repoPath)
+	}
+
+	cmd := exec.Command("git", "-C", repoPath, "diff", "--name-only", latestCommit+"^!")
+	var out bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &stderr
+	err := cmd.Run()
+	if err != nil {
+		return nil, fmt.Errorf("error running git diff: %s, %s", stderr.String(), err)
+	}
+
+	output := out.Bytes()
+	common.Warn("Changed dirs output: %s", output)
 
 	changedFiles := strings.Split(strings.TrimSpace(string(output)), "\n")
 	dirSet := make(map[string]struct{})
