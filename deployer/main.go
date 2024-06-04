@@ -38,9 +38,10 @@ type Config struct {
 }
 
 var (
-	config *Config
-	hosts  []Host
-	c      = cron.New()
+	config          *Config
+	hosts           []Host
+	c               = cron.New()
+	lastKnownCommit string
 )
 
 func LoadConfig(filename string) error {
@@ -144,8 +145,11 @@ func main() {
 	// 3. Setup SSH Keys & Check Service Readiness
 	handleSSHKeysAndServiceChecks()
 
-	// Start watching for changes directly
-	go watchForChanges() // Run in a separate goroutine to avoid blocking main
+	// Start the cron scheduler
+	c.Start()
+
+	// Schedule checkUp function to run periodically
+	c.AddFunc("@every 10s", watchForChanges)
 
 	// Block main goroutine indefinitely
 	select {}

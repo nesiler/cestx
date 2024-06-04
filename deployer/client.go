@@ -87,46 +87,37 @@ func getCurrentCommit(repoPath string) (string, error) {
 
 // watchForChanges watches for new commits and triggers deployments
 func watchForChanges() {
-	ticker := time.NewTicker(time.Second * 15)
-	defer ticker.Stop()
-
 	// Ideally, load latest known commit from a more persistent storage
-	var lastKnownCommit string
 	deployerChanged := false
 
-	for {
-		select {
-		case <-ticker.C:
-			latestCommit, err := client.GetLatestCommit(config.RepoOwner, config.RepoName)
-			if err != nil {
-				common.Err("Failed to fetch the latest commit: %v", err)
-				continue
-			}
+	latestCommit, err := client.GetLatestCommit(config.RepoOwner, config.RepoName)
+	if err != nil {
+		common.Err("Failed to fetch the latest commit: %v", err)
+		return
+	}
 
-			if latestCommit != lastKnownCommit {
-				changedDirs, err := client.GetChangedDirs(config.RepoPath, latestCommit)
+	if latestCommit != lastKnownCommit {
+		changedDirs, err := client.GetChangedDirs(config.RepoPath, latestCommit)
+		if err != nil {
+			common.Err("Failed to get changed directories: %v", err)
+			return
+		}
+
+		for _, dir := range changedDirs {
+			if dir != "deployer" {
+				common.Info("Deploying changes for directory: %s", dir)
+				err := Deploy(dir)
 				if err != nil {
-					common.Err("Failed to get changed directories: %v", err)
-					continue
+					common.Err("Failed to deploy service %s: %v", dir, err)
 				}
-
-				for _, dir := range changedDirs {
-					if dir != "deployer" {
-						common.Info("Deploying changes for directory: %s", dir)
-						err := Deploy(dir)
-						if err != nil {
-							common.Err("Failed to deploy service %s: %v", dir, err)
-						}
-					} else if dir == "deployer" {
-						deployerChanged = true
-					}
-				}
-				if deployerChanged {
-					starterService()
-				}
-				lastKnownCommit = latestCommit
+			} else if dir == "deployer" {
+				deployerChanged = true
 			}
 		}
+		if deployerChanged {
+			starterService()
+		}
+		lastKnownCommit = latestCommit
 	}
 }
 

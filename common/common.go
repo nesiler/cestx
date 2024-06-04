@@ -73,7 +73,9 @@ func SendMessageToTelegram(message string) {
 	// Create the JSON payload
 	payload := map[string]string{"message": message}
 	jsonData, err := json.Marshal(payload)
-	Warn("Error marshalling JSON data: %v", err)
+	if err != nil {
+		Warn("Error marshalling JSON data: %v", err)
+	}
 
 	// Get the Python API host from environment variables
 	if PYTHON_API_HOST == "" {
