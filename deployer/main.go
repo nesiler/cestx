@@ -15,7 +15,7 @@ import (
 // Host represents a single host in the inventory.
 type Host struct {
 	Name                     string `yaml:"name"`
-	AnsibleHost              string `yaml:"ansible_host"`
+	Ip              string `yaml:"ansible_host"`
 	AnsibleSSHPrivateKeyFile string `yaml:"ansible_ssh_private_key_file"`
 	Priority                 int    `yaml:"priority"` // Add Priority field
 }
@@ -64,10 +64,10 @@ func readInventory(filePath string) error {
 	hosts = nil // Clear the hosts slice to start fresh
 	// Process "services" hosts
 	for name, host := range inventory.Services.Hosts {
-		common.Info("Found service host %s with IP %s", name, host.AnsibleHost)
+		common.Info("Found service host %s with IP %s", name, host.Ip)
 		hosts = append(hosts, Host{
 			Name:        name,
-			AnsibleHost: host.AnsibleHost,
+			Ip: host.Ip,
 			Priority:    host.Priority,
 		})
 	}
@@ -102,7 +102,7 @@ func handleSSHKeysAndServiceChecks() {
 			}
 			common.Info("Setting up SSH key for host %s (attempt %d)\n", host.Name, retry+1)
 			common.SendMessageToTelegram("**DEPLOYER** ::: Setting up SSH key for host " + host.Name + " (attempt " + string(rune(retry+1)) + ")")
-			err := setupSSHKeyForHost("master", host.Name, host.AnsibleHost)
+			err := setupSSHKeyForHost("master", host.Name, host.Ip)
 			if err != nil {
 				common.Warn("Error setting up SSH keys for host %s: %v", host.Name, err)
 				if retry < maxRetries-1 { // Don't sleep on the last retry

@@ -39,7 +39,7 @@ func Deploy(serviceName string) error {
 	for _, h := range hosts {
 		if h.Name == serviceName {
 			targetHost = &h
-			common.Ok("Found host for service %s: %s", serviceName, targetHost.AnsibleHost)
+			common.Ok("Found host for service %s: %s", serviceName, targetHost.Ip)
 			break
 		}
 	}
@@ -47,6 +47,9 @@ func Deploy(serviceName string) error {
 	if targetHost == nil {
 		return common.Err("Error: Host not found for service %s", serviceName)
 	}
+
+	common.Out("Deploying service: %s", serviceName)
+	common.SendMessageToTelegram("**DEPLOYER** ::: Deploying service: " + serviceName)
 
 	playbook := config.AnsiblePath + "/update.yaml"
 
@@ -57,7 +60,7 @@ func Deploy(serviceName string) error {
 		playbook = config.AnsiblePath + "/setup.yaml"
 	}
 
-	err := runAnsiblePlaybook(playbook, targetHost.AnsibleHost, map[string]string{"service": serviceName})
+	err := runAnsiblePlaybook(playbook, targetHost.Name, map[string]string{"service": serviceName})
 	if err != nil {
 		return common.Err("Error running playbook: %v", err)
 	}

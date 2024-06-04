@@ -63,6 +63,8 @@ func (client *GitHubClient) PullLatest(repoPath string) error {
 		return nil
 	}
 
+	time.Sleep(3 * time.Second)
+
 	common.Info("Restarting deployer service...")
 	cmd := exec.Command("systemctl", "restart", "starter.service")
 	if err := cmd.Run(); err != nil {
@@ -156,8 +158,6 @@ func watchForChanges(client *GitHubClient) {
 					// No need to continue the loop after updating the deployer
 					break
 				} else {
-					common.Out("Deploying service: %s", dir)
-					common.SendMessageToTelegram("**DEPLOYER** ::: Deploying service: " + dir)
 					err = Deploy(dir)
 					if err != nil {
 						common.Err("Error deploying service %s: %v", dir, err)
