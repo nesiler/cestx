@@ -18,14 +18,11 @@
 
     - name: Report Results
       debug:
-        msg: |
-          Repository exists: {{ repo_status.stat.exists }}
-          Service is active: {{ status.status.ActiveState == 'active'}}
+        msg: "{{ repo_status.stat.exists and status.status.ActiveState == 'active'}}"
 
     - name: Print output to file
       ansible.builtin.copy:
-        content: "Repository exists: {{ repo_status.stat.exists }}, Service is active: {{ status.status.ActiveState == 'active'}}"
+        content: "{{ repo_status.stat.exists and status.status.ActiveState == 'active'}}"
         dest: /tmp/check_result.txt
-        force: yes
-        mode: "0666"
+        mode: 0644
       delegate_to: localhost

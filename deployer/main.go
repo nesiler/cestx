@@ -84,9 +84,7 @@ func handleSSHKeysAndServiceChecks() {
 	})
 
 	for _, host := range hosts {
-		// Check if the service exists and if not, run the setup playbook
-		repoExists, serviceExists := checkServiceExists(host.Name)
-		if !repoExists || !serviceExists {
+		if !checkServiceExists(host.Name) {
 			common.Warn("Service or Repo does not exist for host %s\n", host.Name)
 			common.Info("Starting setup process for: %s\n", host.Name)
 			common.SendMessageToTelegram("**DEPLOYER** ::: Starting setup process for: " + host.Name)

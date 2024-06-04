@@ -52,8 +52,7 @@ func Deploy(serviceName string) error {
 	playbook := config.AnsiblePath + "/update.yaml"
 
 	// Check if repository and service exist
-	repoExists, serviceExists := checkServiceExists(targetHost.Name) // Pass the host's IP address
-	if !repoExists || !serviceExists {
+	if !checkServiceExists(targetHost.Name) {
 		common.Warn("Service or Repo does not exist for host %s\n", targetHost.Name)
 		common.Info("Starting setup process for: %s\n", targetHost.Name)
 		playbook = config.AnsiblePath + "/setup.yaml"
@@ -67,33 +66,25 @@ func Deploy(serviceName string) error {
 	return nil
 }
 
-func checkServiceExists(host string) (bool, bool) {
+func checkServiceExists(host string) bool {
 	playbook := config.AnsiblePath + "/check.yaml"
 	err := runAnsiblePlaybook(playbook, host, map[string]string{"service": host})
 	if err != nil {
 		common.Err("Error running playbook 'check.yaml': %v", err)
-		return false, false // Assume service doesn't exist on error
+		return false
 	}
 
 	// Read output from /tmp/check_result.txt
 	file, err := os.Open("/tmp/check_result.txt")
 	if err != nil {
 		common.Err("Error opening check result file: %v", err)
-		return false, false
+		return false
 	}
 	defer file.Close()
 
-	scanner := bufio.NewScanner(file)
-	var repoExists, serviceActive bool
-	for scanner.Scan() {
-		line := scanner.Text()
-		if strings.Contains(line, "Repository exists: true") {
-			repoExists = true
-		}
-		if strings.Contains(line, "Service is active: true") {
-			serviceActive = true
-		}
-	}
+	scanner := bufio.NewScanner(file) // File contains just "True" or "False"
+	scanner.Scan()
+	result := scanner.Text() == "True"
 
-	return repoExists, serviceActive
+	return result
 }
