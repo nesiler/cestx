@@ -69,7 +69,7 @@ func main() {
 	c.Start()
 
 	// Schedule checkUp function to run periodically
-	c.AddFunc("@every 1m", checkUp)
+	c.AddFunc("@every 30s", checkUp)
 
 	currentHost, err := common.ExternalIP()
 	common.FailError(err, "")
