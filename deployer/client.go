@@ -123,6 +123,8 @@ func watchForChanges() {
 		}
 		lastKnownCommit = latestCommit
 	}
+
+	common.Out("No changes detected")
 }
 
 func starterService() {
