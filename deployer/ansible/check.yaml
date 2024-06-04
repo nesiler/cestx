@@ -26,5 +26,5 @@
       ansible.builtin.copy:
         content: "Repository exists: {{ repo_status.stat.exists }}, Service is active: {{ status.status.ActiveState == 'active'}}"
         dest: /tmp/latest_commit.txt
-        force: yes
+        force: true
       delegate_to: localhost
