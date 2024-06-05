@@ -5,7 +5,7 @@
   "port": 4066,
   "healthCheck": {
     "endpoint": "/health",
-    "interval": "30s",
+    "interval": "10s",
     "timeout": "5s"
   }
 }
