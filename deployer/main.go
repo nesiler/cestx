@@ -145,7 +145,7 @@ func main() {
 	handleSSHKeysAndServiceChecks()
 
 	// First save the last known commit
-	lastKnownCommit, err := getCurrentCommit(config.RepoName)
+	lastKnownCommit, err := getCurrentCommit(config.RepoPath)
 	common.FailError(err, "error getting current commit: %v")
 	saveLastKnownCommit(lastKnownCommit)
 
