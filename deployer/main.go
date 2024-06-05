@@ -144,6 +144,11 @@ func main() {
 	// 3. Setup SSH Keys & Check Service Readiness
 	handleSSHKeysAndServiceChecks()
 
+	// First save the last known commit
+	lastKnownCommit, err := getCurrentCommit(config.RepoName)
+	common.FailError(err, "error getting current commit: %v")
+	saveLastKnownCommit(lastKnownCommit)
+
 	c.AddFunc("@every 10s", watchForChanges)
 	c.Start()
 
