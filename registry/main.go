@@ -53,7 +53,7 @@ func main() {
 	// Initialize Redis client using config data
 	redisConfig, ok := configData.ExternalServices["redis"]
 	if !ok {
-		common.Fatal("Redis configuration not found in config file\n")
+		common.Fatal("Redis configuration not found in config file")
 	}
 
 	rdb = redis.NewClient(&redis.Options{
@@ -65,16 +65,16 @@ func main() {
 	http.HandleFunc("/service/", getServiceHandler)
 	http.HandleFunc("/config/", getConfigHandler)
 
-	// Start the cron scheduler
+	c.AddFunc("@every 15s", checkUp)
 	c.Start()
 
-	// Schedule checkUp function to run periodically
-	c.AddFunc("@every 15s", checkUp)
-
 	currentHost, err := common.ExternalIP()
-	common.FailError(err, "")
+	if err != nil {
+		common.Warn("Error getting external IP")
+		currentHost = configData.ExternalServices["registry"].Host
+	}
 
-	common.Info("Server started on: ", currentHost)
+	common.Ok("Server started on: %s", currentHost)
 	err = http.ListenAndServe(":3434", nil)
 	common.FailError(err, "")
 	common.SendMessageToTelegram("**REGISTRY** ::: Server started on: " + currentHost)
