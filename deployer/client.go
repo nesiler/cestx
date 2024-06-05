@@ -46,13 +46,9 @@ func (c *GitHubClient) GetLatestCommit(owner, repo string) (string, error) {
 	return *commits[0].SHA, nil
 }
 
-func (c *GitHubClient) GetChangedDirs(repoPath, latestCommit string) ([]string, error) {
+func (c *GitHubClient) GetChangedDirs(repoPath, latestCommit, lastKnownCommit string) ([]string, error) {
 	common.Warn("Getting changed directories between %s and %s", lastKnownCommit, latestCommit)
 	common.Out("Checking for changes in %s", repoPath)
-	// currentCommit, err := getCurrentCommit(repoPath)
-	// if err != nil {
-	// 	return nil, err
-	// }
 
 	cmd := exec.Command("git", "-C", repoPath, "diff", "--name-only", lastKnownCommit, latestCommit)
 	var out bytes.Buffer
@@ -101,24 +97,34 @@ func pullLatestChanges(repoPath string) error {
 	return nil
 }
 
-func checkAndRestartDeployer(changedDirs []string, repoPath string) bool {
-	for _, dir := range changedDirs {
-		if dir == "deployer" {
-			if err := pullLatestChanges(repoPath); err != nil {
-				common.Err("Failed to pull changes for deployer: %v", err)
-				continue
-			}
-			starterService()
-			return true
-		}
-	}
-	return false
-}
+// func checkAndRestartDeployer(changedDirs []string, repoPath string) bool {
+// 	for _, dir := range changedDirs {
+// 		if dir == "deployer" {
+// 			if err := pullLatestChanges(repoPath); err != nil {
+// 				common.Err("Failed to pull changes for deployer: %v", err)
+// 				continue
+// 			}
+// 			starterService()
+// 			return true
+// 		}
+// 	}
+// 	return false
+// }
 
 func watchForChanges() {
 	latestCommit, err := client.GetLatestCommit(config.RepoOwner, config.RepoName)
 	if err != nil {
 		common.Err("Failed to fetch latest commit: %v", err)
+		return
+	}
+
+	// Load last known commit to prevent reprocessing the same commit on restart
+	lastKnownCommit := loadLastKnownCommit()
+	updateDeployer := false
+
+	// If the last known commit is the same as the latest commit, no changes have been made
+	if lastKnownCommit == latestCommit {
+		common.Out("No changes detected")
 		return
 	}
 
@@ -128,35 +134,48 @@ func watchForChanges() {
 	}
 
 	// Fetch and compute diff
-	changedDirs, err := client.GetChangedDirs(config.RepoPath, latestCommit)
+	changedDirs, err := client.GetChangedDirs(config.RepoPath, latestCommit, lastKnownCommit)
 	if err != nil {
 		common.Err("Failed to get changed directories: %v", err)
 		return
 	}
 
-	// First handle potential updates to the deployer itself
-	if checkAndRestartDeployer(changedDirs, config.RepoPath) {
-		return // Deployer was updated and is restarting
-	}
-
 	// Handle other service updates
 	for _, dir := range changedDirs {
-		common.Info("Deploying changes for directory: %s", dir)
-		err := Deploy(dir) // Ensure Deploy checks the host and service status
-		if err != nil {
-			common.Err("Failed to deploy service %s: %v", dir, err)
+		if dir != "deployer" {
+			common.Info("Deploying changes for directory: %s", dir)
+			err := Deploy(dir) // Ensure Deploy checks the host and service status
+
+			if err != nil {
+				common.Err("Failed to deploy service %s: %v", dir, err)
+			}
+		} else if dir == "deployer" {
+			updateDeployer = true
 		}
 	}
 
-	// Save last known commit to prevent reprocessing the same commit on restart
+	// Restart deployer if changes were detected
+	if updateDeployer {
+		restartService()
+	}
+	
 	saveLastKnownCommit(latestCommit)
 }
 
 func saveLastKnownCommit(commit string) {
-	err := os.WriteFile("last_known_commit.txt", []byte(commit), 0644)
+	err := os.WriteFile("/tmp/last_known_commit", []byte(commit), 0644)
 	if err != nil {
 		common.Err("Failed to save last known commit: %v", err)
 	}
+}
+
+func loadLastKnownCommit() string {
+	data, err := os.ReadFile("/tmp/last_known_commit")
+	if err != nil {
+		common.Err("Failed to read last known commit: %v", err)
+		return ""
+	}
+	return string(data)
 }
 
 // // watchForChanges watches for new commits and triggers deployments
@@ -193,11 +212,12 @@ func saveLastKnownCommit(commit string) {
 // 	common.Out("No changes detected")
 // }
 
-func starterService() {
+func restartService() {
 	common.Info("Deployer changes detected; pulling updates and restarting...")
 
 	// Restart the starter.service to apply changes
-	cmd := exec.Command("systemctl", "restart", "starter.service")
+	// cmd := exec.Command("systemctl", "restart", "starter.service")
+	cmd := exec.Command("systemctl", "restart", "deployer.service")
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	err := cmd.Run()
@@ -206,6 +226,6 @@ func starterService() {
 	}
 
 	// it should already be restarted, but just in case, sleep for a few seconds
-	time.Sleep(5 * time.Second)
-
+	time.Sleep(3 * time.Second)
+	return
 }

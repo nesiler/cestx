@@ -38,10 +38,9 @@ type Config struct {
 }
 
 var (
-	config          *Config
-	hosts           []Host
-	c               = cron.New()
-	lastKnownCommit string
+	config *Config
+	hosts  []Host
+	c      = cron.New()
 )
 
 func LoadConfig(filename string) error {
@@ -144,8 +143,6 @@ func main() {
 
 	// 3. Setup SSH Keys & Check Service Readiness
 	handleSSHKeysAndServiceChecks()
-	lastKnownCommit, err = getCurrentCommit(config.RepoPath)
-	common.FailError(err, "Error getting current commit: %v\n")
 
 	c.AddFunc("@every 10s", watchForChanges)
 	c.Start()
