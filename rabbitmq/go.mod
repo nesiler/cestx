@@ -1,10 +1,11 @@
-module github.com/nesiler/cestx/test
+module github.com/nesiler/cestx/rabbitmq
 
-go 1.22
+go 1.22.3
 
 require (
-	github.com/joho/godotenv v1.5.1
-	github.com/nesiler/cestx/common v0.0.0
+	github.com/google/uuid v1.6.0
+	github.com/nesiler/cestx/common v0.0.0-20240605091303-10941c2ebc65
+	github.com/streadway/amqp v1.1.0
 )
 
 require (

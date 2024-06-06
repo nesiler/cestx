@@ -136,7 +136,7 @@ func main() {
 
 	// 1. Load configuration
 	err := LoadConfig("config.json")
-	common.FailError(err, "Error loading configuration: %v\n")
+	common.FailError(err, "Error loading configuration: %v")
 
 	// 1.2 Load inventory
 	readInventory(config.AnsiblePath + "/inventory.yaml")

@@ -137,6 +137,14 @@ func HealthHandler() http.HandlerFunc {
 	}
 }
 
+// It returns the value if found, otherwise the provided default value.
+func GetEnv(key string, defaultValue string) string {
+	if value, exists := os.LookupEnv(key); exists {
+		return value
+	}
+	return defaultValue
+}
+
 func ExternalIP() (string, error) {
 	ifaces, err := net.Interfaces()
 	FailError(err, "Interfaces error: %v\n")

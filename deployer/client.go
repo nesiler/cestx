@@ -97,20 +97,6 @@ func pullLatestChanges(repoPath string) error {
 	return nil
 }
 
-// func checkAndRestartDeployer(changedDirs []string, repoPath string) bool {
-// 	for _, dir := range changedDirs {
-// 		if dir == "deployer" {
-// 			if err := pullLatestChanges(repoPath); err != nil {
-// 				common.Err("Failed to pull changes for deployer: %v", err)
-// 				continue
-// 			}
-// 			starterService()
-// 			return true
-// 		}
-// 	}
-// 	return false
-// }
-
 func watchForChanges() {
 	latestCommit, err := client.GetLatestCommit(config.RepoOwner, config.RepoName)
 	if err != nil {
@@ -158,7 +144,7 @@ func watchForChanges() {
 	if updateDeployer {
 		restartService()
 	}
-	
+
 	saveLastKnownCommit(latestCommit)
 }
 
@@ -177,40 +163,6 @@ func loadLastKnownCommit() string {
 	}
 	return string(data)
 }
-
-// // watchForChanges watches for new commits and triggers deployments
-// func watchForChanges() {
-// 	latestCommit, err := client.GetLatestCommit(config.RepoOwner, config.RepoName)
-// 	if err != nil {
-// 		common.Err("Failed to fetch the latest commit: %v", err)
-// 		return
-// 	}
-
-// 	if latestCommit != lastKnownCommit {
-// 		common.Info("New commit detected: %s", latestCommit)
-// 		common.SendMessageToTelegram("**DEPLOYER** ::: New commit detected: " + latestCommit)
-// 		changedDirs, err := client.GetChangedDirs(config.RepoPath, latestCommit)
-// 		if err != nil {
-// 			common.Err("Failed to get changed directories: %v", err)
-// 			return
-// 		}
-
-// 		for _, dir := range changedDirs {
-// 			if dir == "deployer" {
-// 				starterService()
-// 				common.FailError(err, "error restarting starter service: %v")
-// 			}
-// 			common.Info("Deploying changes for directory: %s", dir)
-// 			err := Deploy(dir)
-// 			if err != nil {
-// 				common.Err("Failed to deploy service %s: %v", dir, err)
-// 			}
-// 		}
-// 		lastKnownCommit = latestCommit
-// 	}
-
-// 	common.Out("No changes detected")
-// }
 
 func restartService() {
 	common.Info("Deployer changes detected; pulling updates and restarting...")
