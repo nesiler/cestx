@@ -1,7 +1,7 @@
 # Created by https://www.toptal.com/developers/gitignore/api/python,go,goland,intellij,macos,xcode,visualstudiocode,dotenv
 # Edit at https://www.toptal.com/developers/gitignore?templates=python,go,goland,intellij,macos,xcode,visualstudiocode,dotenv
 .setup/
-3/
+1-Docs/
 ### dotenv ###
 .env
 
