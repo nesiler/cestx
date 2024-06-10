@@ -4,8 +4,6 @@ go 1.22.3
 
 replace github.com/nesiler/cestx/common => ../common
 
-require github.com/nesiler/cestx/common v0.0.0-20240607155021-a67c5663c72f
-
 require (
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/goccy/go-json v0.10.2 // indirect
@@ -27,5 +25,6 @@ require (
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/minio/minio-go/v7 v7.0.71
+	github.com/nesiler/cestx/common v0.0.0-00010101000000-000000000000
 	golang.org/x/sys v0.18.0 // indirect
 )

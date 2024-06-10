@@ -16,7 +16,7 @@ func registerServiceHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var service common.Service
+	var service common.ServiceConfig
 	err := json.NewDecoder(r.Body).Decode(&service)
 	if err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
@@ -28,7 +28,7 @@ func registerServiceHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func registerService(service common.Service) {
+func registerService(service common.ServiceConfig) {
 	common.Info("Registering service: %s", service.Name)
 	common.SendMessageToTelegram("**REGISTRY** ::: Registering service: " + service.Name)
 
@@ -77,7 +77,7 @@ func getConfigHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(serviceInfoData)
 }
 
-func scheduleHealthCheck(service common.Service) {
+func scheduleHealthCheck(service common.ServiceConfig) {
 	interval, err := time.ParseDuration(service.HealthCheck.Interval)
 	if err != nil {
 		common.Fatal("Error parsing interval: %v\n", err)
@@ -89,7 +89,7 @@ func scheduleHealthCheck(service common.Service) {
 	})
 }
 
-func monitorService(service common.Service) {
+func monitorService(service common.ServiceConfig) {
 	resp, err := http.Get("http://" + service.Address + ":" + strconv.Itoa(service.Port) + service.HealthCheck.Endpoint)
 	status := "unhealthy"
 	if err == nil && resp.StatusCode == http.StatusOK {
@@ -117,7 +117,7 @@ func checkUp() {
 			continue
 		}
 
-		var service common.Service
+		var service common.ServiceConfig
 		err = json.Unmarshal([]byte(serviceData), &service)
 		if err != nil {
 			common.Warn("Error unmarshalling service data for key %s: %v", key, err)

@@ -12,11 +12,11 @@ import (
 type RabbitMQConnection struct {
 	Connection *amqp.Connection
 	Channel    *amqp.Channel
-	Config     *Config
+	Config     *common.RabbitMQConfig
 }
 
 // NewRabbitMQConnection creates a new connection to the RabbitMQ server
-func NewRabbitMQConnection(cfg *Config) (*RabbitMQConnection, error) {
+func NewRabbitMQConnection(cfg *common.RabbitMQConfig) (*RabbitMQConnection, error) {
 	conn, err := connect(cfg)
 	if err != nil {
 		common.Err("Failed to connect to RabbitMQ: %v", err) // Use common.Err
@@ -42,7 +42,7 @@ func NewRabbitMQConnection(cfg *Config) (*RabbitMQConnection, error) {
 
 // connect attempts to establish a connection to the RabbitMQ server
 // with retries and exponential backoff.
-func connect(cfg *Config) (*amqp.Connection, error) {
+func connect(cfg *common.RabbitMQConfig) (*amqp.Connection, error) {
 	var err error
 	var conn *amqp.Connection
 	retries := 3                     // Total connection attempts

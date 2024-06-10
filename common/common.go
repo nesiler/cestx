@@ -31,20 +31,6 @@ var (
 	REGISTRY_HOST   string
 )
 
-type Service struct {
-	ID          string      `json:"id"`
-	Name        string      `json:"name"`
-	Address     string      `json:"address"`
-	Port        int         `json:"port"`
-	HealthCheck HealthCheck `json:"healthCheck"`
-}
-
-type HealthCheck struct {
-	Endpoint string `json:"endpoint"`
-	Interval string `json:"interval"`
-	Timeout  string `json:"timeout"`
-}
-
 func newlinePrintfFunc(f func(format string, a ...interface{})) func(format string, a ...interface{}) {
 	return func(format string, a ...interface{}) {
 		f(format+"\n", a...)
@@ -96,16 +82,7 @@ func SendMessageToTelegram(message string) {
 	}
 }
 
-func JsonToService(jsonData []byte) (*Service, error) {
-	var service Service
-	err := json.Unmarshal(jsonData, &service)
-	if err != nil {
-		return nil, fmt.Errorf("error unmarshalling JSON data: %v", err)
-	}
-	return &service, nil
-}
-
-func RegisterService(service *Service) error {
+func RegisterService(service *ServiceConfig) error {
 	// Marshal the updated service data
 	updatedJsonData, err := json.Marshal(service)
 	FailError(err, "error marshalling updated service data: %v")
@@ -135,14 +112,6 @@ func HealthHandler() http.HandlerFunc {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`{"status":"healthy"}`))
 	}
-}
-
-// It returns the value if found, otherwise the provided default value.
-func GetEnv(key string, defaultValue string) string {
-	if value, exists := os.LookupEnv(key); exists {
-		return value
-	}
-	return defaultValue
 }
 
 func ExternalIP() (string, error) {

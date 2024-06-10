@@ -62,3 +62,15 @@ func DownloadTemplate(ctx context.Context, client *minio.Client, objectName, loc
 	common.Ok("Template '%s' downloaded successfully to '%s'", objectName, localFilePath)
 	return nil
 }
+
+// DeleteTemplate deletes a template file from MinIO.
+func DeleteTemplate(ctx context.Context, client *minio.Client, objectName, bucketName string) error {
+	// Remove the object from the bucket
+	err := client.RemoveObject(ctx, bucketName, objectName, minio.RemoveObjectOptions{})
+	if err != nil {
+		return common.Err("Failed to delete template '%s' from MinIO: %w", objectName, err)
+	}
+
+	common.Ok("Template '%s' deleted successfully from MinIO bucket '%s'", objectName, bucketName)
+	return nil
+}

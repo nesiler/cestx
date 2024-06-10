@@ -45,26 +45,3 @@ func (r *machineRepository) GetMachineByID(ctx context.Context, machineID uuid.U
 	}
 	return &machine, nil
 }
-
-/*
-package main
-
-// ... imports ...
-
-type machineService struct {
-	machineRepo repositories.MachineRepository // Inject the MachineRepository interface
-}
-
-
-func (s *machineService) SomeServiceFunction(ctx context.Context ... ) error {
-    // ...
-	newMachine := &models.Machine{
-		// ... initialize machine data ...
-	}
-
-	if err := s.machineRepo.CreateMachine(ctx, newMachine); err != nil {
-		return fmt.Errorf("failed to create machine: %w", err)
-	}
-
-}
-*/

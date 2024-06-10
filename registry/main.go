@@ -36,6 +36,8 @@ func main() {
 	godotenv.Load("../.env")
 	godotenv.Load(".env")
 
+	common.PYTHON_API_HOST = common.GetEnv("PYTHON_API_HOST", "http://192.168.4.99")
+
 	// Load configuration file
 	configFile, err := os.ReadFile("config.json")
 	common.FailError(err, "error reading config file")
@@ -43,11 +45,6 @@ func main() {
 	err = json.Unmarshal(configFile, &configData)
 	common.FailError(err, "error parsing config file")
 
-	common.PYTHON_API_HOST = os.Getenv("PYTHON_API_HOST")
-	if common.PYTHON_API_HOST == "" {
-		common.Warn("PYTHON_API_HOST not set, using default value")
-		common.PYTHON_API_HOST = "http://192.168.4.99"
-	}
 	common.SendMessageToTelegram("**REGISTRY** ::: Service started")
 
 	// Initialize Redis client using config data

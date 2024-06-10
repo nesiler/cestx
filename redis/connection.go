@@ -12,19 +12,18 @@ import (
 // RedisClient manages the connection to a Redis server.
 type RedisClient struct {
 	Client *redis.Client
-	Config *Config
+	Config *common.RedisConfig
 }
 
 // NewRedisClient creates a new Redis client instance with connection pooling.
-func NewRedisClient(cfg *Config) (*RedisClient, error) {
+func NewRedisClient(cfg *common.RedisConfig) (*RedisClient, error) {
 	// Create a new Redis client with connection pool options
 	client := redis.NewClient(&redis.Options{
 		Addr:         cfg.Address,
-		Password:     cfg.Password, // No password set
-		DB:           cfg.DB,       // Use default DB
-		PoolSize:     10,           // Maximum number of connections in the pool (adjust as needed)
-		MinIdleConns: 2,            // Minimum number of idle connections (adjust as needed)
-		// TODO Check other options like Dialer, TLSConfig, etc.
+		Password:     cfg.Password,
+		DB:           cfg.DB,
+		PoolSize:     10,
+		MinIdleConns: 2,
 	})
 
 	// Test the connection (ping) with a timeout
