@@ -10,7 +10,7 @@ import (
 )
 
 // It takes the Redis client, context, key, value (which can be any serializable type), and expiration duration.
-func Set(ctx context.Context, client *RedisClient, key string, value interface{}, expiration time.Duration) error {
+func Set(ctx context.Context, rdb *redis.Client, key string, value interface{}, expiration time.Duration) error {
 	// Serialize the value to JSON
 	data, err := json.Marshal(value)
 	if err != nil {
@@ -18,7 +18,7 @@ func Set(ctx context.Context, client *RedisClient, key string, value interface{}
 	}
 
 	// Set the value in Redis with expiration
-	err = client.Client.Set(ctx, key, data, expiration).Err()
+	err = rdb.Set(ctx, key, data, expiration).Err()
 	if err != nil {
 		return common.Err("Failed to set value in Redis: %v", err)
 	}
@@ -28,8 +28,8 @@ func Set(ctx context.Context, client *RedisClient, key string, value interface{}
 
 // Get retrieves a value from Redis.
 // It takes the Redis client, context, key, and a target pointer to store the retrieved value (must be a pointer).
-func Get(ctx context.Context, client *RedisClient, key string, target interface{}) error {
-	val, err := client.Client.Get(ctx, key).Result()
+func Get(ctx context.Context, rdb *redis.Client, key string, target interface{}) error {
+	val, err := rdb.Get(ctx, key).Result()
 	if err != nil {
 		if err == redis.Nil {
 			return common.Err("Key '%s' not found in Redis", key)
@@ -45,16 +45,16 @@ func Get(ctx context.Context, client *RedisClient, key string, target interface{
 }
 
 // Delete deletes a key from Redis.
-func Delete(ctx context.Context, client *RedisClient, key string) error {
-	if err := client.Client.Del(ctx, key).Err(); err != nil {
+func Delete(ctx context.Context, rdb *redis.Client, key string) error {
+	if err := rdb.Del(ctx, key).Err(); err != nil {
 		return common.Err("Failed to delete key '%s' from Redis: %v", key, err)
 	}
 	return nil
 }
 
 // Incr increments a counter in Redis and returns the new value.
-func Incr(ctx context.Context, client *RedisClient, key string) (int64, error) {
-	newVal, err := client.Client.Incr(ctx, key).Result()
+func Incr(ctx context.Context, rdb *redis.Client, key string) (int64, error) {
+	newVal, err := rdb.Incr(ctx, key).Result()
 	if err != nil {
 		return 0, common.Err("Failed to increment key '%s' in Redis: %v", key, err)
 	}

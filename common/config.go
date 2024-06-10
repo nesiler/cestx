@@ -105,7 +105,7 @@ func LoadPostgreSQLConfig() *PostgreSQLConfig {
 
 // Config holds the configuration for RabbitMQ
 type RabbitMQConfig struct {
-	URL      string
+	Host     string
 	Username string
 	Password string
 }
@@ -113,23 +113,21 @@ type RabbitMQConfig struct {
 // LoadConfig loads the configuration from environment variables
 func LoadRabbitMQConfig() *RabbitMQConfig {
 	return &RabbitMQConfig{
-		URL:      GetEnv("RABBITMQ_URL", "amqp://admin:password@192.168.4.62:5672/"),
-		Username: GetEnv("RABBITMQ_USERNAME", "guest"),
-		Password: GetEnv("RABBITMQ_PASSWORD", "guest"),
+		Host:     GetEnv("RABBITMQ_HOST", "192.168.4.62"),
+		Username: GetEnv("RABBITMQ_USERNAME", "admin"),
+		Password: GetEnv("RABBITMQ_PASSWORD", "password"),
 	}
 }
 
 type RedisConfig struct {
-	Address  string
-	Password string
-	DB       int
+	Host string
+	Port string
 }
 
 // LoadConfig loads the Redis configuration from environment variables.
 func LoadRedisConfig() *RedisConfig {
 	return &RedisConfig{
-		Address:  GetEnv("REDIS_ADDRESS", "192.168.4.60:6379"),
-		Password: GetEnv("REDIS_PASSWORD", ""),
-		DB:       GetEnvAsInt("REDIS_DB", 0),
+		Host: GetEnv("REDIS_HOST", "192.168.4.60"),
+		Port: GetEnv("REDIS_PORT", "6379"),
 	}
 }

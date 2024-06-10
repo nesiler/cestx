@@ -50,7 +50,7 @@ func connect(cfg *common.RabbitMQConfig) (*amqp.Connection, error) {
 
 	for i := 1; i <= retries; i++ {
 		common.Out("Attempting to connect to RabbitMQ (attempt %d/%d)", i, retries)
-		conn, err = amqp.Dial(cfg.URL)
+		conn, err = amqp.Dial(cfg.Host)
 		if err == nil {
 			common.Ok("Successfully connected to RabbitMQ!")
 			return conn, nil // Successful connection

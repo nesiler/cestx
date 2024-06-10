@@ -8,20 +8,19 @@ import (
 	"github.com/nesiler/cestx/common"
 )
 
-var (
-	// Set client to nil initially
-	client *minio.Client
-)
-
+type Client struct {
+	*minio.Client
+}
 
 // NewMinIOClient creates a new MinIO client and ensures the templates bucket exists.
 func NewMinIOClient(cfg *common.MinIOConfig) (*minio.Client, error) {
 	// Create a new MinIO client instance
 	var err error
-	client, err = minio.New(cfg.Endpoint, &minio.Options{
+	client, err := minio.New(cfg.Endpoint, &minio.Options{
 		Creds:  credentials.NewStaticV4(cfg.AccessKeyID, cfg.SecretAccessKey, ""),
 		Secure: cfg.UseSSL,
 	})
+
 	common.FailError(err, "Failed to create MinIO client: %v", err)
 
 	common.Ok("MinIO client created successfully.")

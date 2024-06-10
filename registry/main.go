@@ -2,61 +2,40 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
-	"os"
-	"strconv"
 
-	"github.com/go-redis/redis/v8"
 	"github.com/joho/godotenv"
 	"github.com/nesiler/cestx/common"
+	"github.com/nesiler/cestx/redis"
 	"github.com/robfig/cron/v3"
 )
 
-type Config struct {
-	ExternalServices map[string]ServiceInfo `json:"externalServices"`
-}
-
-type ServiceInfo struct {
-	Host     string `json:"host"`
-	Port     int    `json:"port"`
-	User     string `json:"user,omitempty"`
-	Password string `json:"password,omitempty"`
-	DBName   string `json:"dbname,omitempty"`
-}
-
 var (
-	rdb        *redis.Client
-	ctx        = context.Background()
-	configData Config
-	c          = cron.New()
+	rdb *redis.Client
+	ctx = context.Background()
+	c   = cron.New()
 )
 
 func main() {
+	// TODO 1: Load environment variables
+	// TODO 2: Initialize the Redis client
+	// TODO 3: Start api server for the registry operations
+	// TODO 4: Start cron job to check the services' health
+	// TODO 5: Send a message to the Telegram bot when the server starts
+	// TODO 6: Implement the registerServiceHandler, getServiceHandler, and getConfigHandler functions
+
 	godotenv.Load("../.env")
 	godotenv.Load(".env")
 
 	common.PYTHON_API_HOST = common.GetEnv("PYTHON_API_HOST", "http://192.168.4.99")
 
-	// Load configuration file
-	configFile, err := os.ReadFile("config.json")
-	common.FailError(err, "error reading config file")
-
-	err = json.Unmarshal(configFile, &configData)
-	common.FailError(err, "error parsing config file")
-
 	common.SendMessageToTelegram("**REGISTRY** ::: Service started")
 
-	// Initialize Redis client using config data
-	redisConfig, ok := configData.ExternalServices["redis"]
-	if !ok {
-		common.Fatal("Redis configuration not found in config file")
-	}
-
-	rdb = redis.NewClient(&redis.Options{
-		Addr: redisConfig.Host + ":" + strconv.Itoa(redisConfig.Port),
-	})
+	rdb, err := redis.NewRedisClient(common.LoadRedisConfig())
 	common.SendMessageToTelegram("**REGISTRY** ::: Redis client initialized")
+	common.FailError(err, "")
+
+	defer redis.Close(rdb)
 
 	http.HandleFunc("/register", registerServiceHandler)
 	http.HandleFunc("/service/", getServiceHandler)
@@ -66,10 +45,7 @@ func main() {
 	c.Start()
 
 	currentHost, err := common.ExternalIP()
-	if err != nil {
-		common.Warn("Error getting external IP")
-		currentHost = configData.ExternalServices["registry"].Host
-	}
+	common.FailError(err, "")
 
 	common.Ok("Server started on: %s", currentHost)
 	err = http.ListenAndServe(":3434", nil)
