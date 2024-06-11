@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"strings"
 	"time"
 
 	"github.com/nesiler/cestx/common"
@@ -25,7 +26,7 @@ func runAnsiblePlaybook(playbookPath, host string, extraVars map[string]string) 
 	// set inventory file
 	args = append(args, "-i", config.AnsiblePath+"/inventory.yaml")
 
-	// common.Out("Running Ansible playbook: ansible-playbook %s", strings.Join(args, " "))
+	common.Out("Running Ansible playbook: ansible-playbook %s", strings.Join(args, " "))
 	cmd := exec.Command("ansible-playbook", args...)
 	cmd.Stdout = log.Writer()
 	cmd.Stderr = log.Writer()
