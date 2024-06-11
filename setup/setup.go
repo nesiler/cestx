@@ -104,6 +104,11 @@ func Setup(client *proxmox.Client, fConfigFile *string) {
 	// err = runAnsiblePlaybook("playbooks/portainer.yaml", "master", map[string]string{"service": "master"})
 	// failError(err)
 
+	// Run playbook for master host: playbooks/ansible.yaml
+	fmt.Print("Installing Ansible on master host...\n")
+	err = runAnsiblePlaybook("playbooks/ansible.yaml", "master", map[string]string{"service": "master"})
+	failError(err)
+
 	// Run playbook: playbooks/deploy.yaml
 	fmt.Print("Deploying CESTX...\n")
 
