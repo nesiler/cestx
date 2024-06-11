@@ -1,0 +1,16 @@
+[Unit]
+Description=Deployer Service
+After=network.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+WorkingDirectory=/home/cestx/deployer
+ExecStart=/home/cestx/deployer/deployer
+Restart=on-failure
+RestartSec=5
+AmbientCapabilities=CAP_NET_BIND_SERVICE  # If needed, granting minimal capabilities
+
+[Install]
+WantedBy=multi-user.target

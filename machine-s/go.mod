@@ -1,17 +1,8 @@
 module github.com/nesiler/cestx/machine-s
 
-go 1.22.3
-
-// for local development
-replace github.com/nesiler/cestx/common => ../common
-
 replace github.com/nesiler/cestx/rabbitmq => ../rabbitmq
 
-replace github.com/nesiler/cestx/minio => ../minio
-
-replace github.com/nesiler/cestx/postgresql => ../postgresql
-
-replace github.com/nesiler/cestx/redis => ../redis
+go 1.22.4
 
 require (
 	github.com/docker/docker v26.1.4+incompatible
@@ -19,12 +10,12 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/joho/godotenv v1.5.1
 	github.com/minio/minio-go/v7 v7.0.71
-	github.com/nesiler/cestx/common v0.0.0-20240605091303-10941c2ebc65
-	github.com/nesiler/cestx/minio v0.0.0-00010101000000-000000000000
-	github.com/nesiler/cestx/postgresql v0.0.0-00010101000000-000000000000
-	github.com/nesiler/cestx/postgresql/models v0.0.0-20240610191142-1ba8680a3682
+	github.com/nesiler/cestx/common v0.0.0-20240611104430-afe4236a36a6
+	github.com/nesiler/cestx/minio v0.0.0-20240611104430-afe4236a36a6
+	github.com/nesiler/cestx/postgresql v0.0.0-20240611104430-afe4236a36a6
+	github.com/nesiler/cestx/postgresql/models v0.0.0-20240611104430-afe4236a36a6
 	github.com/nesiler/cestx/rabbitmq v0.0.0-00010101000000-000000000000
-	github.com/nesiler/cestx/redis v0.0.0-00010101000000-000000000000
+	github.com/nesiler/cestx/redis v0.0.0-20240611104430-afe4236a36a6
 	github.com/redis/go-redis/v9 v9.5.3
 	github.com/streadway/amqp v1.1.0
 	gorm.io/gorm v1.25.10
@@ -59,7 +50,7 @@ require (
 	github.com/morikuni/aec v1.0.0 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.0 // indirect
-	github.com/pkg/errors v0.8.1 // indirect
+	github.com/pkg/errors v0.9.1 // indirect
 	github.com/rs/xid v1.5.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.52.0 // indirect
 	go.opentelemetry.io/otel v1.27.0 // indirect

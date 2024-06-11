@@ -174,7 +174,7 @@ func restartService() {
 	cmd.Stderr = os.Stderr
 	err := cmd.Run()
 	if err != nil {
-		common.Err("Failed to restart starter.service: %v", err)
+		common.Err("Failed to restart deployer.service: %v", err)
 	}
 
 	// it should already be restarted, but just in case, sleep for a few seconds

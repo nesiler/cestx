@@ -1,0 +1,123 @@
+---
+- name: Deploy deployer service
+  hosts: "{{ service }}"
+  remote_user: root
+  become: yes
+
+  tasks:
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: yes
+
+    - name: Install required packages
+      ansible.builtin.apt:
+        name:
+          - python3
+          - python3-pip
+          - python3-venv
+          - golang
+          - git
+          - wget
+          - curl
+          - vim
+          - nano
+        state: present
+
+    - name: Check if repository directory exists
+      ansible.builtin.stat:
+        path: "/home/cestx"
+      register: repo_exists
+
+    - name: Clone repository if not present
+      ansible.builtin.git:
+        repo: "https://github.com/nesiler/cestx"
+        dest: "/home/cestx"
+      when: not repo_exists.stat.exists
+
+    - name: Pull latest changes
+      ansible.builtin.git:
+        repo: "https://github.com/nesiler/cestx"
+        dest: "/home/cestx"
+        update: yes
+        force: yes
+      when: repo_exists.stat.exists
+
+    - name: Copy .env file to hosts
+      ansible.builtin.copy:
+        src: "../.env"
+        dest: "/home/cestx/.env"
+
+    - name: Check if virtual environment exists
+      ansible.builtin.stat:
+        path: "/home/venv"
+      register: venv_exists
+
+    - name: Create virtual environment if not present
+      ansible.builtin.shell: |
+        python3 -m venv /home/venv
+      args:
+        executable: /bin/bash
+      when: not venv_exists.stat.exists
+
+    - name: Source virtual environment
+      ansible.builtin.shell: |
+        source /home/venv/bin/activate
+      args:
+        executable: /bin/bash
+
+    - name: Install required Python packages
+      ansible.builtin.shell: |
+        /home/venv/bin/pip3 install --no-cache-dir "python-telegram-bot[all]" "flask[async]" python-dotenv
+
+    - name: Source environment variables from .env file
+      ansible.builtin.shell: |
+        set -a
+        source /home/cestx/.env
+        set +a
+      args:
+        executable: /bin/bash
+
+    - name: Build Go executable
+      ansible.builtin.shell: /usr/bin/go build -o deployer
+      args:
+        chdir: /home/cestx/deployer
+
+    - name: Copy telegram service file
+      ansible.builtin.template:
+        src: "../services/telegram.service"
+        dest: "/etc/systemd/system/telegram.service"
+
+    - name: Copy deployer service file
+      ansible.builtin.template:
+        src: "../services/deployer.service"
+        dest: "/etc/systemd/system/deployer.service"
+
+    # - name: Copy starter service file
+    #   ansible.builtin.template:
+    #     src: "../services/starter.service"
+    #     dest: "/etc/systemd/system/starter.service"
+    #     mode: "0755"
+
+    # - name: Copy starter sh file
+    #   ansible.builtin.template:
+    #     src: "starter.sh"
+    #     dest: "/tmp/starter.sh"
+    #     mode: "0777"
+
+    - name: Reload systemd daemon
+      ansible.builtin.systemd:
+        daemon_reload: yes
+
+    - name: Enable and start telegram service
+      ansible.builtin.systemd:
+        name: "telegram"
+        enabled: yes
+        state: restarted
+        force: yes
+
+    - name: Enable and start deployer service
+      ansible.builtin.systemd:
+        name: "deployer"
+        enabled: yes
+        state: restarted
+        force: yes

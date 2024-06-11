@@ -1,0 +1,38 @@
+{
+  "ostemplate": "black:vztmpl/ubuntu-24-stable.tar.zst",
+  "arch": "amd64",
+  "cmode": "",
+  "console": true,
+  "cores": 2,
+  "cpulimit": 0,
+  "cpuunits": 1024,
+  "features": {
+    "nesting": 1
+  },
+  "hostname": "MASTER",
+  "memory": 2048,
+  "networks": {
+    "0": {
+      "bridge": "vmbr0",
+      "gw": "192.168.5.1",
+      "ip": "192.168.4.99/22",
+      "name": "eth0"
+    }
+  },
+  "onboot": false,
+  "ostype": "ubuntu",
+  "protection": false,
+  "rootfs": {
+    "size": "16G",
+    "volume": "local-lvm:vm-9999-disk-0"
+  },
+  "start": false,
+  "storage": "local",
+  "swap": 512,
+  "tty": 2,
+  "unprivileged": true,
+  "tags": "cestx",
+  "ssh-public-keys": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIIMqzXY6T66Fr437ce4NfhtUUHbJtE21fLAt9M8vB0hX from Mac to Fedora",
+  "description": "LXC container for MASTER",
+  "password": "252525"
+}

@@ -8,7 +8,6 @@ import (
 	"syscall"
 	"time"
 
-	rc "github.com/redis/go-redis/v9"
 	"github.com/joho/godotenv"
 	mc "github.com/minio/minio-go/v7"
 	"github.com/nesiler/cestx/common"
@@ -16,6 +15,7 @@ import (
 	"github.com/nesiler/cestx/postgresql"
 	"github.com/nesiler/cestx/rabbitmq"
 	"github.com/nesiler/cestx/redis"
+	rc "github.com/redis/go-redis/v9"
 	amqp "github.com/streadway/amqp"
 	gc "gorm.io/gorm"
 )

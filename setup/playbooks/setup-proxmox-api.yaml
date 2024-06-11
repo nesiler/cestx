@@ -1,0 +1,89 @@
+---
+- name: Deploy deployer service
+  hosts: "{{ service }}"
+  remote_user: root
+  become: yes
+
+  tasks:
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: yes
+
+    - name: Install required packages
+      ansible.builtin.apt:
+        name:
+          - python3
+          - python3-pip
+          - python3-venv
+          - git
+        state: present
+
+    - name: Check if repository directory exists
+      ansible.builtin.stat:
+        path: "/home/cestx"
+      register: repo_exists
+
+    - name: Clone repository if not present
+      ansible.builtin.git:
+        repo: "https://github.com/nesiler/cestx"
+        dest: "/home/cestx"
+      when: not repo_exists.stat.exists
+
+    - name: Pull latest changes
+      ansible.builtin.git:
+        repo: "https://github.com/nesiler/cestx"
+        dest: "/home/cestx"
+        update: yes
+        force: yes
+      when: repo_exists.stat.exists
+
+    - name: Copy .env file to hosts
+      ansible.builtin.copy:
+        src: "../.env"
+        dest: "/home/cestx/.env"
+
+    - name: Check if virtual environment exists
+      ansible.builtin.stat:
+        path: "/home/venv"
+      register: venv_exists
+
+    - name: Create virtual environment if not present
+      ansible.builtin.shell: |
+        python3 -m venv /home/venv
+      args:
+        executable: /bin/bash
+      when: not venv_exists.stat.exists
+
+    - name: Source virtual environment
+      ansible.builtin.shell: |
+        source /home/venv/bin/activate
+      args:
+        executable: /bin/bash
+
+    - name: Install required Python packages
+      ansible.builtin.shell: |
+        /home/venv/bin/pip3 install --no-cache-dir  "flask[all]"
+
+    - name: Source environment variables from .env file
+      ansible.builtin.shell: |
+        set -a
+        source /home/cestx/.env
+        set +a
+      args:
+        executable: /bin/bash
+
+    - name: Copy proxmox api service file
+      ansible.builtin.template:
+        src: "../services/proxmox-api.service"
+        dest: "/etc/systemd/system/proxmox-api.service"
+
+    - name: Reload systemd daemon
+      ansible.builtin.systemd:
+        daemon_reload: yes
+
+    - name: Enable and start service
+      ansible.builtin.systemd:
+        name: "proxmox-api"
+        enabled: yes
+        state: restarted
+        force: yes

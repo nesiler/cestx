@@ -1,0 +1,29 @@
+services:
+  hosts:
+    master:
+      ansible_host: 192.168.4.99
+      ansible_host_key_checking: False
+      ansible_ssh_private_key_file: ~/.ssh/master
+    proxmox:
+      ansible_host: 192.168.4.50
+      ansible_host_key_checking: False
+      ansible_ssh_private_key_file: ~/.ssh/master
+
+systems:
+  hosts:
+    redis:
+      ansible_host: 192.168.4.60
+      ansible_host_key_checking: False
+      ansible_ssh_private_key_file: ~/.ssh/master
+    postgresql:
+      ansible_host: 192.168.4.61
+      ansible_host_key_checking: False
+      ansible_ssh_private_key_file: ~/.ssh/master
+    rabbitmq:
+      ansible_host: 192.168.4.62
+      ansible_host_key_checking: False
+      ansible_ssh_private_key_file: ~/.ssh/master
+    minio:
+      ansible_host: 192.168.4.70
+      ansible_host_key_checking: False
+      ansible_ssh_private_key_file: ~/.ssh/master

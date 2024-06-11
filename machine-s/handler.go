@@ -7,7 +7,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/nesiler/cestx/common"
 	"github.com/nesiler/cestx/rabbitmq"
-	"github.com/streadway/amqp"
+	amqp "github.com/streadway/amqp"
 )
 
 // handleMessage processes RabbitMQ messages for machine operations.

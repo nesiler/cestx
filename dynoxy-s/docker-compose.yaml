@@ -1,0 +1,20 @@
+version: "3.3"
+
+services:
+  traefik:
+    image: traefik:v2.9 # Or your preferred version
+    command:
+      - --api.insecure=true # CAUTION: For dev only!
+      - --providers.docker # Or your desired provider
+      - --entrypoints.web.address=:80
+    networks:
+      - cestx_net
+    ports:
+      - "80:80" # Expose Traefik's web UI (optional)
+      - "8080:8080" # Expose Traefik's API
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro # For Docker provider
+
+networks:
+  cestx_net:
+    driver: host

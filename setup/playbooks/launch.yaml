@@ -1,0 +1,63 @@
+---
+- name: Setup Environment for systems
+  hosts: "{{ target }}"
+  remote_user: root
+  become: yes
+  vars:
+    deploy_commands:
+      redis: "docker compose up -d --force-recreate"
+      postgresql: "docker compose up -d --force-recreate"
+      rabbitmq: "docker compose up -d --force-recreate"
+      minio: "docker compose up -d --force-recreate"
+
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+
+    - name: Install required packages
+      apt:
+        name:
+          - golang
+          - git
+          - wget
+          - curl
+          - vim
+          - nano
+        state: present
+
+    - name: Clone repository if not present
+      git:
+        repo: "https://github.com/nesiler/cestx"
+        dest: "/home/cestx"
+
+    - name: Pull latest changes
+      git:
+        repo: "https://github.com/nesiler/cestx"
+        dest: "/home/cestx/"
+        update: yes
+
+    - name: Run deploy command
+      shell: "{{ deploy_commands[target] }}"
+      args:
+        chdir: "/home/cestx/{{ target }}"
+
+    - name: Check if Portainer container is running
+      shell: docker ps -a --filter "name=portainer_agent" --filter "status=running" | wc -l
+      register: portainer_result
+      failed_when: portainer_result.stdout != "2"
+      ignore_errors: yes
+
+    - debug:
+        var: portainer_result.stdout
+
+    - name: Run Portainer container
+      command: >
+        docker run -d
+        -p 9001:9001
+        --name portainer_agent
+        --restart=always
+        -v /var/run/docker.sock:/var/run/docker.sock
+        -v /var/lib/docker/volumes:/var/lib/docker/volumes
+        portainer/agent
+      when: portainer_result is failed

@@ -1,0 +1,14 @@
+[Unit]
+Description=Proxmox API Service
+After=network.target
+
+[Service]
+ExecStart=/home/venv/bin/python3 /home/cestx/setup/api.py
+WorkingDirectory=/home/nesiler
+Restart=always
+RestartSec=10
+User=root
+Group=root
+
+[Install]
+WantedBy=multi-user.target
