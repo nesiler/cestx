@@ -8,13 +8,13 @@ import (
 // Consume consumes messages from the specified queue.
 // It takes a RabbitMQConnection, the queue name, and a handler function
 // to process each received message.
-func Consume(conn *RabbitMQConnection, queueName string, handler func(amqp.Delivery) error) error {
-	if conn == nil || conn.Channel == nil {
-		return common.Err("RabbitMQ connection or channel is nil")
+func Consume(ch *amqp.Channel, queueName string, handler func(amqp.Delivery) error) error {
+	if ch == nil {
+		return common.Err("Channel is nil")
 	}
 
 	// Declare the queue (makes the consumer idempotent)
-	_, err := conn.Channel.QueueDeclare(
+	_, err := ch.QueueDeclare(
 		queueName, // name
 		true,      // durable
 		false,     // delete when unused
@@ -27,7 +27,7 @@ func Consume(conn *RabbitMQConnection, queueName string, handler func(amqp.Deliv
 	}
 
 	// Register the consumer
-	msgs, err := conn.Channel.Consume(
+	msgs, err := ch.Consume(
 		queueName, // queue
 		"",        // consumer
 		false,     // auto-ack (set to false to manually ack/nack)

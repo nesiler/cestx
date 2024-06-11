@@ -9,10 +9,6 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-type Client struct {
-	*redis.Client
-}
-
 // NewRedisClient creates a new Redis client instance with connection pooling.
 func NewRedisClient(cfg *common.RedisConfig) (*redis.Client, error) {
 	// Create a new Redis client with connection pool options

@@ -8,15 +8,8 @@ import (
 	"github.com/streadway/amqp"
 )
 
-// RabbitMQConnection represents a connection to a RabbitMQ server
-type RabbitMQConnection struct {
-	Connection *amqp.Connection
-	Channel    *amqp.Channel
-	Config     *common.RabbitMQConfig
-}
-
-// NewRabbitMQConnection creates a new connection to the RabbitMQ server
-func NewRabbitMQConnection(cfg *common.RabbitMQConfig) (*RabbitMQConnection, error) {
+// rmqClient creates a new connection to the RabbitMQ server
+func NewConnection(cfg *common.RabbitMQConfig) (*amqp.Connection, error) {
 	conn, err := connect(cfg)
 	if err != nil {
 		common.Err("Failed to connect to RabbitMQ: %v", err) // Use common.Err
@@ -24,20 +17,7 @@ func NewRabbitMQConnection(cfg *common.RabbitMQConfig) (*RabbitMQConnection, err
 	}
 
 	common.Info("Connected to RabbitMQ!")
-
-	ch, err := conn.Channel()
-	if err != nil {
-		common.Err("Failed to open a channel: %v", err)
-		return nil, fmt.Errorf("failed to open a channel: %w", err)
-	}
-
-	common.Info("RabbitMQ channel opened.")
-
-	return &RabbitMQConnection{
-		Connection: conn,
-		Channel:    ch,
-		Config:     cfg,
-	}, nil
+	return conn, nil
 }
 
 // connect attempts to establish a connection to the RabbitMQ server
@@ -65,27 +45,4 @@ func connect(cfg *common.RabbitMQConfig) (*amqp.Connection, error) {
 	}
 
 	return nil, fmt.Errorf("failed to connect to RabbitMQ after %d retries: %w", retries, err)
-}
-
-// Close closes the RabbitMQ connection and channel.
-func (c *RabbitMQConnection) Close() error {
-	common.Info("Closing RabbitMQ connection...")
-
-	if c.Channel != nil {
-		if err := c.Channel.Close(); err != nil {
-			common.Err("Error closing RabbitMQ channel: %v", err)
-			return fmt.Errorf("error closing channel: %w", err)
-		}
-		common.Info("RabbitMQ channel closed.")
-	}
-
-	if c.Connection != nil {
-		if err := c.Connection.Close(); err != nil {
-			common.Err("Error closing RabbitMQ connection: %v", err)
-			return fmt.Errorf("error closing connection: %w", err)
-		}
-		common.Ok("RabbitMQ connection closed successfully.")
-	}
-
-	return nil
 }

@@ -13,6 +13,8 @@ import (
 type MachineRepository interface {
 	CreateMachine(ctx context.Context, machine *models.Machine) error
 	GetMachineByID(ctx context.Context, machineID uuid.UUID) (*models.Machine, error)
+	UpdateMachine(ctx context.Context, machine *models.Machine) error
+	DeleteMachine(ctx context.Context, machineID uuid.UUID) error
 }
 
 type machineRepository struct {
@@ -44,4 +46,22 @@ func (r *machineRepository) GetMachineByID(ctx context.Context, machineID uuid.U
 		return nil, common.Err("Failed to get machine by ID: %v", result.Error)
 	}
 	return &machine, nil
+}
+
+// UpdateMachine updates the details of a machine in the database.
+func (r *machineRepository) UpdateMachine(ctx context.Context, machine *models.Machine) error {
+	result := r.db.WithContext(ctx).Save(machine)
+	if result.Error != nil {
+		return common.Err("Failed to update machine: %v", result.Error)
+	}
+	return nil
+}
+
+// DeleteMachine removes a machine record from the database.
+func (r *machineRepository) DeleteMachine(ctx context.Context, machineID uuid.UUID) error {
+	result := r.db.WithContext(ctx).Delete(&models.Machine{}, "id = ?", machineID)
+	if result.Error != nil {
+		return common.Err("Failed to delete machine: %v", result.Error)
+	}
+	return nil
 }

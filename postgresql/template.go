@@ -13,6 +13,8 @@ import (
 type TemplateRepository interface {
 	CreateTemplate(ctx context.Context, template *models.Template) error
 	GetTemplateByID(ctx context.Context, templateID uuid.UUID) (*models.Template, error)
+	GetTemplateByName(ctx context.Context, templateName string) (*models.Template, error)
+	DeleteTemplate(ctx context.Context, templateID uuid.UUID) error
 }
 
 type templateRepository struct {
@@ -33,6 +35,19 @@ func (r *templateRepository) CreateTemplate(ctx context.Context, template *model
 	return nil
 }
 
+// GetTemplateByName retrieves a template by its name from the database.
+func (r *templateRepository) GetTemplateByName(ctx context.Context, templateName string) (*models.Template, error) {
+	var template models.Template
+	result := r.db.WithContext(ctx).First(&template, "name = ?", templateName)
+	if result.Error != nil {
+		if result.Error == gorm.ErrRecordNotFound {
+			return nil, common.Err("Template not found: %v", result.Error)
+		}
+		return nil, common.Err("Failed to get template by name: %v", result.Error)
+	}
+	return &template, nil
+}
+
 // GetTemplateByID retrieves a template by its ID from the database.
 func (r *templateRepository) GetTemplateByID(ctx context.Context, templateID uuid.UUID) (*models.Template, error) {
 	var template models.Template
@@ -44,4 +59,13 @@ func (r *templateRepository) GetTemplateByID(ctx context.Context, templateID uui
 		return nil, common.Err("Failed to get template by ID: %v", result.Error)
 	}
 	return &template, nil
+}
+
+// DeleteTemplate deletes a template record from the database.
+func (r *templateRepository) DeleteTemplate(ctx context.Context, templateID uuid.UUID) error {
+	result := r.db.WithContext(ctx).Delete(&models.Template{}, "id = ?", templateID)
+	if result.Error != nil {
+		return common.Err("Failed to delete template: %v", result.Error)
+	}
+	return nil
 }

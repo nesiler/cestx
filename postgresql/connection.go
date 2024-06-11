@@ -9,6 +9,7 @@ import (
 	"gorm.io/gorm"
 )
 
+
 func NewPostgreSQLDB(cfg *common.PostgreSQLConfig) (*gorm.DB, error) {
 	// Construct the database connection string
 	connStr := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",

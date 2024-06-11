@@ -52,7 +52,8 @@ type Template struct {
 	Name        string `gorm:"uniqueIndex"`
 	Description string
 	UserID      uuid.UUID `gorm:"type:uuid"`
-	// Files []File
+	Type        string    `gorm:"type:varchar(20);default:'dockerfile'"`
+	File        string    `gorm:"type:text"`
 }
 
 type Task struct {

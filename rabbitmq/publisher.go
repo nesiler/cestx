@@ -9,10 +9,10 @@ import (
 
 // Publish publishes a message to the specified exchange and routing key.
 // It handles common publishing tasks and error scenarios.
-func Publish(conn *RabbitMQConnection, exchange, routingKey string, message interface{}) error {
+func Publish(ch *amqp.Channel, exchange, routingKey string, message interface{}) error {
 	// Input validation
-	if conn == nil || conn.Channel == nil {
-		return common.Err("RabbitMQ connection or channel is nil")
+	if ch == nil {
+		return common.Err("Channel is required")
 	}
 
 	body, err := json.Marshal(message)
@@ -21,7 +21,7 @@ func Publish(conn *RabbitMQConnection, exchange, routingKey string, message inte
 	}
 
 	// Publish the message
-	err = conn.Channel.Publish(
+	err = ch.Publish(
 		exchange,   // exchange
 		routingKey, // routing key
 		false,      // mandatory

@@ -8,10 +8,6 @@ import (
 	"github.com/nesiler/cestx/common"
 )
 
-type Client struct {
-	*minio.Client
-}
-
 // NewMinIOClient creates a new MinIO client and ensures the templates bucket exists.
 func NewMinIOClient(cfg *common.MinIOConfig) (*minio.Client, error) {
 	// Create a new MinIO client instance
