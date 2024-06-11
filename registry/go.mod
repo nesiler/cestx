@@ -3,7 +3,6 @@ module github.com/nesiler/cestx/registry
 go 1.22.3
 
 require (
-	github.com/go-redis/redis/v8 v8.11.5
 	github.com/nesiler/cestx/common v0.0.0-20240605091303-10941c2ebc65
 	github.com/robfig/cron/v3 v3.0.1
 )

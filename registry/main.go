@@ -7,48 +7,55 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/nesiler/cestx/common"
 	"github.com/nesiler/cestx/redis"
+	rc "github.com/redis/go-redis/v9"
 	"github.com/robfig/cron/v3"
 )
 
 var (
-	rdb *redis.Client
+	rdb *rc.Client
 	ctx = context.Background()
 	c   = cron.New()
 )
 
 func main() {
-	// TODO 1: Load environment variables
-	// TODO 2: Initialize the Redis client
-	// TODO 3: Start api server for the registry operations
-	// TODO 4: Start cron job to check the services' health
-	// TODO 5: Send a message to the Telegram bot when the server starts
-	// TODO 6: Implement the registerServiceHandler, getServiceHandler, and getConfigHandler functions
-
 	godotenv.Load("../.env")
 	godotenv.Load(".env")
 
-	common.PYTHON_API_HOST = common.GetEnv("PYTHON_API_HOST", "http://192.168.4.99")
+	common.PYTHON_API_HOST = common.GetEnv("PYTHON_API_HOST", "http://192.168.4.99") // default value is your local IP
+	common.TELEGRAM_TOKEN = common.GetEnv("TELEGRAM_TOKEN", "")
+	common.CHAT_ID = common.GetEnv("CHAT_ID", "")
 
-	common.SendMessageToTelegram("**REGISTRY** ::: Service started")
+	common.SendMessageToTelegram("**REGISTRY** ::: Service starting...")
 
-	rdb, err := redis.NewRedisClient(common.LoadRedisConfig())
-	common.SendMessageToTelegram("**REGISTRY** ::: Redis client initialized")
-	common.FailError(err, "")
-
+	// Initialize Redis client
+	var err error
+	cfg := common.LoadRedisConfig()
+	rdb, err = redis.NewRedisClient(cfg)
+	if err != nil {
+		common.Fatal("Failed to connect to Redis: %v", err)
+	}
 	defer redis.Close(rdb)
 
+	common.SendMessageToTelegram("**REGISTRY** ::: Redis client initialized")
+
+	// Register routes and start server
 	http.HandleFunc("/register", registerServiceHandler)
 	http.HandleFunc("/service/", getServiceHandler)
 	http.HandleFunc("/config/", getConfigHandler)
+	http.HandleFunc("/health", common.HealthHandler()) // Health check endpoint
 
-	c.AddFunc("@every 15s", checkUp)
-	c.Start()
+	go func() {
+		c.AddFunc("@every 15s", checkUp) // Check service health every 15 seconds
+		c.Start()
+	}()
 
 	currentHost, err := common.ExternalIP()
 	common.FailError(err, "")
 
-	common.Ok("Server started on: %s", currentHost)
+	common.Ok("Registry server started on: %s", currentHost)
+	common.SendMessageToTelegram("**REGISTRY** ::: Server started on: " + currentHost)
+
 	err = http.ListenAndServe(":3434", nil)
 	common.FailError(err, "")
-	common.SendMessageToTelegram("**REGISTRY** ::: Server started on: " + currentHost)
+
 }

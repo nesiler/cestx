@@ -2,10 +2,12 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"time"
 
-	"github.com/go-redis/redis/v8"
 	"github.com/nesiler/cestx/common"
+	"github.com/redis/go-redis/v9"
 )
 
 func registerServiceHandler(w http.ResponseWriter, r *http.Request) {
@@ -21,8 +23,16 @@ func registerServiceHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Get the external IP address of the service
+	service.Address, err = common.ExternalIP()
+	if err != nil {
+		common.Warn("Failed to get external IP for service %s: %v", service.Name, err)
+		// You might want to handle this differently, e.g., return an error
+	}
+
 	registerService(service)
 	scheduleHealthCheck(service)
+
 	w.WriteHeader(http.StatusOK)
 }
 
@@ -35,7 +45,7 @@ func registerService(service common.ServiceConfig) {
 
 	err = rdb.HSet(ctx, "service:"+service.ID, map[string]interface{}{
 		"data":   serviceData,
-		"status": "unknown",
+		"status": "unknown", // Initial status is unknown
 	}).Err()
 	common.FailError(err, "Redis error: %v")
 }
@@ -57,19 +67,117 @@ func getServiceHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func getConfigHandler(w http.ResponseWriter, r *http.Request) {
-	// TODO 1: Get the configurations with common package
-	// TODO 2: Use these functions: common.LoadPostgreSQLConfig, common.LoadRabbitMQConfig, common.LoadRedisConfig
-	// TODO 3: Return the configurations as JSON, use switch case for different configurations
+	configType := r.URL.Path[len("/config/"):]
+
+	var configData []byte
+	var err error
+
+	switch configType {
+	case "postgresql":
+		configData, err = json.Marshal(common.LoadPostgreSQLConfig())
+	case "rabbitmq":
+		configData, err = json.Marshal(common.LoadRabbitMQConfig())
+	case "redis":
+		configData, err = json.Marshal(common.LoadRedisConfig())
+	default:
+		http.Error(w, "Invalid config type", http.StatusBadRequest)
+		return
+	}
+
+	if err != nil {
+		http.Error(w, "Error fetching config", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(configData)
 }
 
 func scheduleHealthCheck(service common.ServiceConfig) {
-	// TODO: Schedule a health check for the service
+	common.Info("Scheduling health check for service: %s", service.Name)
+
+	// Define the health check function
+	healthCheckFunc := func() {
+		// Construct the health check URL
+		healthCheckURL := fmt.Sprintf("http://%s:%d%s", service.Address, service.Port, service.HealthCheck.Endpoint)
+
+		// Perform the health check request
+		resp, err := http.Get(healthCheckURL)
+		if err != nil {
+			common.Warn("Health check failed for service %s: %v", service.Name, err)
+			// Update service status in Redis to "unhealthy"
+			updateServiceStatus(service.ID, "unhealthy")
+			return
+		}
+		defer resp.Body.Close()
+
+		// Check for a successful status code (200-299)
+		if resp.StatusCode >= 200 && resp.StatusCode <= 299 {
+			common.Info("Health check successful for service: %s", service.Name)
+			updateServiceStatus(service.ID, "healthy")
+		} else {
+			common.Warn("Health check failed for service %s: Status Code %d", service.Name, resp.StatusCode)
+			updateServiceStatus(service.ID, "unhealthy")
+		}
+	}
+
+	// Schedule the health check to run every 30 seconds
+	go func() {
+		ticker := time.NewTicker(30 * time.Second)
+		for {
+			<-ticker.C
+			healthCheckFunc()
+		}
+	}()
 }
 
-func monitorService(service common.ServiceConfig) {
-	// TODO: Monitor the service and update the status in Redis
+func updateServiceStatus(serviceID, status string) {
+	err := rdb.HSet(ctx, "service:"+serviceID, "status", status).Err()
+	if err != nil {
+		common.Err("Failed to update service status in Redis: %v", err)
+	}
 }
 
 func checkUp() {
-	// TODO: Get all status of services and send a message to telegram
+	common.Info("Checking up services...")
+
+	// Iterate through all registered services in Redis
+	iter := rdb.Scan(ctx, 0, "service:*", 0).Iterator()
+	for iter.Next(ctx) {
+		serviceKey := iter.Val()
+
+		// Retrieve service data from Redis
+		serviceData, err := rdb.HGet(ctx, serviceKey, "data").Result()
+		if err != nil {
+			common.Err("Failed to get service data from Redis: %v", err)
+			continue // Skip to the next service
+		}
+
+		var service common.ServiceConfig
+		err = json.Unmarshal([]byte(serviceData), &service)
+		if err != nil {
+			common.Err("Failed to unmarshal service data: %v", err)
+			continue
+		}
+
+		// Get service status
+		status, err := rdb.HGet(ctx, serviceKey, "status").Result()
+		if err != nil {
+			common.Err("Failed to get service status: %v", err)
+			continue
+		}
+
+		// Log the status of each service
+		common.Out("Service: %s (%s) - Status: %s", service.Name, service.ID, status)
+
+		// Optionally, send a Telegram message if a service is unhealthy
+		if status == "unhealthy" {
+			message := fmt.Sprintf("**REGISTRY WARNING**\nService: %s (%s) is unhealthy!", service.Name, service.ID)
+			common.SendMessageToTelegram(message)
+		}
+	}
+
+	if err := iter.Err(); err != nil {
+		common.Err("Error iterating through services in Redis: %v", err)
+	}
 }
