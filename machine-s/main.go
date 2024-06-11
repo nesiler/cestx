@@ -4,259 +4,175 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"path/filepath"
+	"os/signal"
+	"syscall"
+	"time"
 
-	"github.com/docker/docker/client"
-	"github.com/google/uuid"
-	"github.com/minio/minio-go"
+	rc "github.com/redis/go-redis/v9"
+	"github.com/joho/godotenv"
+	mc "github.com/minio/minio-go/v7"
 	"github.com/nesiler/cestx/common"
-	"gorm.io/driver/postgres"
-	"gorm.io/gorm"
+	"github.com/nesiler/cestx/minio"
+	"github.com/nesiler/cestx/postgresql"
+	"github.com/nesiler/cestx/rabbitmq"
+	"github.com/nesiler/cestx/redis"
+	amqp "github.com/streadway/amqp"
+	gc "gorm.io/gorm"
 )
 
-// Machine struct representing a machine instance.
-type Machine struct {
-	common.Base
-	UserID      uuid.UUID `gorm:"type:uuid"`
-	TemplateID  uuid.UUID `gorm:"type:uuid"`
-	Name        string    `gorm:"uniqueIndex"`
-	Status      string
-	ContainerID string
-	IP          string
-	URL         string
-	Port        int
-}
+// Declare global variables for clients
+var (
+	minioClient    *mc.Client
+	postgresClient *gc.DB
+	redisClient    *rc.Client
+	amqpConn       *amqp.Connection
+)
 
 func main() {
-	// Load configurations from environment variables
+	// 1. Load Environment Variables
+	godotenv.Load("../.env")
+	godotenv.Load(".env")
+
+	common.PYTHON_API_HOST = common.GetEnv("PYTHON_API_HOST", "")
 	common.TELEGRAM_TOKEN = common.GetEnv("TELEGRAM_TOKEN", "")
 	common.CHAT_ID = common.GetEnv("CHAT_ID", "")
-	common.PYTHON_API_HOST = common.GetEnv("PYTHON_API_HOST", "localhost")
-	common.REGISTRY_HOST = common.GetEnv("REGISTRY_HOST", "localhost:3434")
-	rabbitMQConfig := &common.RabbitMQConfig{
-		URL:      common.GetEnv("RABBITMQ_URL", "amqp://guest:guest@localhost:5672/"),
-		Username: common.GetEnv("RABBITMQ_USERNAME", "guest"),
-		Password: common.GetEnv("RABBITMQ_PASSWORD", "guest"),
-	}
-	postgresConfig := &common.PostgresConfig{
-		Host:     common.GetEnv("DB_HOST", "localhost"),
-		Port:     common.GetEnv("DB_PORT", "5432"),
-		User:     common.GetEnv("DB_USER", "postgres"),
-		Password: common.GetEnv("DB_PASSWORD", "postgres"),
-		DBName:   common.GetEnv("DB_NAME", "cestx"),
-	}
-	minioCfg := &common.MinIOConfig{
-		Endpoint:        common.GetEnv("MINIO_ENDPOINT", "localhost:9000"),
-		AccessKeyID:     common.GetEnv("MINIO_ACCESS_KEY_ID", "admin"),
-		SecretAccessKey: common.GetEnv("MINIO_SECRET_ACCESS_KEY", "password"),
-		UseSSL:          common.GetEnvAsBool("MINIO_USE_SSL", false),
-		TemplatesBucket: common.GetEnv("MINIO_TEMPLATES_BUCKET", "templates"),
+	common.REGISTRY_HOST = common.GetEnv("REGISTRY_HOST", "")
+
+	// 2. Initialize Clients
+	InitializeClients()
+	defer closeClients() // Ensure graceful shutdown
+
+	// 3. Register Service
+	go registerService()
+
+	// 4. Start Consuming Messages
+	common.Head("Starting Machine Service...")
+	common.SendMessageToTelegram("**MACHINE SERVICE** ::: Service starting...")
+
+	if err := consumeMessages(); err != nil {
+		common.Fatal("Error consuming messages: %v", err)
 	}
 
-	// Initialize database connection
-	db, err := initDatabase(postgresConfig)
-	if err != nil {
-		common.Fatal("Failed to connect to database: %s", err)
-	}
-	defer func(db *gorm.DB) {
-		sqlDB, _ := db.DB()
-		_ = sqlDB.Close()
-	}(db)
+	// 5. Graceful Shutdown
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, os.Interrupt, syscall.SIGTERM) // Capture interrupt signals
+	<-quit                                             // Block until an interrupt is received
 
-	// Initialize MinIO client
-	minioClient, err := common.NewMinIOClient(minioCfg)
-	if err != nil {
-		common.Fatal("Failed to initialize MinIO client: %s", err)
-	}
+	common.Info("Machine service stopping...")
+	common.SendMessageToTelegram("**MACHINE SERVICE** ::: Service stopping...")
 
-	// Initialize Docker client
-	dockerClient, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
-	if err != nil {
-		common.Fatal("Failed to initialize Docker client: %s", err)
-	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	<-ctx.Done()
+	common.Ok("Machine service stopped successfully")
+}
+
+// InitializeClients sets up connections to external services.
+func InitializeClients() {
+	var err error
+
+	// Initialize Minio client
+	minioCfg := common.LoadMinIOConfig()
+	minioClient, err = minio.NewMinIOClient(minioCfg)
+	common.FailError(err, "Failed to initialize Minio client: %v\n", err)
+
+	// Initialize PostgreSQL client
+	dbCfg := common.LoadPostgreSQLConfig()
+	postgresClient, err = postgresql.NewPostgreSQLDB(dbCfg)
+	common.FailError(err, "Failed to initialize PostgreSQL client: %v\n", err)
+
+	// Initialize Redis client
+	redisCfg := common.LoadRedisConfig()
+	redisClient, err = redis.NewRedisClient(redisCfg)
+	common.FailError(err, "Failed to initialize Redis client: %v\n", err)
 
 	// Initialize RabbitMQ connection
-	rabbitMQConn, err := common.NewRabbitMQConnection(rabbitMQConfig)
-	if err != nil {
-		common.Fatal("Failed to connect to RabbitMQ: %s", err)
-	}
-	defer func(conn *common.RabbitMQConnection) {
-		_ = conn.Close()
-	}(rabbitMQConn)
+	rabbitCfg := common.LoadRabbitMQConfig()
+	amqpConn, err = rabbitmq.NewConnection(rabbitCfg)
+	common.FailError(err, "Failed to initialize RabbitMQ connection: %v\n", err)
+}
 
-	// Start consuming from the machine.create queue
-	messages, err := rabbitMQConn.Channel.Consume(
-		"machine.tasks.create", // queue name
-		"",                     // consumer
-		false,                  // auto-ack
-		false,                  // exclusive
-		false,                  // no-local
-		false,                  // no-wait
-		nil,                    // args
-	)
-	if err != nil {
-		common.Fatal("Failed to register a consumer: %s", err)
+// closeClients closes connections to external services.
+func closeClients() {
+	// Close RabbitMQ connection gracefully
+	if amqpConn != nil {
+		if err := amqpConn.Close(); err != nil {
+			common.Err("Error closing RabbitMQ connection: %v", err)
+		}
 	}
 
+	// Close Redis connection
+	if redisClient != nil && redisClient != nil {
+		if err := redisClient.Close(); err != nil {
+			common.Err("Failed to close Redis connection: %v", err)
+		}
+	}
+
+	// (Optional) Close other client connections if needed
+}
+
+// registerService registers the machine-s with the registry service.
+func registerService() {
+	// Read the service configuration from service.json
+	serviceData, err := os.ReadFile("service.json")
+	common.FailError(err, "Failed to read service configuration: %v\n", err)
+
+	// Load service configuration
+	service, err := common.LoadServiceConfig(serviceData)
+	common.FailError(err, "Failed to load service configuration: %v\n", err)
+
+	// Set the service address
+	service.Address, err = common.ExternalIP()
+	common.FailError(err, "Failed to get external IP: %v\n", err)
+
+	// Register the service with the registry
+	err = common.RegisterService(service)
+	if err != nil {
+		// Log the error, retry registration after a delay
+		common.Warn("Failed to register service: %v", err)
+		time.Sleep(5 * time.Second)
+		registerService() // Retry registration
+		return
+	}
+
+	// Send a Telegram message on successful registration
+	common.SendMessageToTelegram(fmt.Sprintf("**%s** ::: Service registered successfully!", service.Name))
+}
+
+// consumeMessages sets up consumers for different machine events.
+func consumeMessages() error {
+	// 1. Create a channel for message consumption
+	ch, err := amqpConn.Channel()
+	if err != nil {
+		return fmt.Errorf("failed to open a channel: %w", err)
+	}
+	defer ch.Close() // Close the channel when the function exits
+
+	// 2. Define consumer functions for different events (using closures to capture amqpConn)
+	handleMachineCreate := func(delivery amqp.Delivery) error {
+		return handleMessage(delivery, amqpConn)
+	}
+
+	handleMachineStart := func(delivery amqp.Delivery) error {
+		return handleMessage(delivery, amqpConn)
+	}
+
+	// ... Define similar consumer functions for handleMachineStop, handleMachineDelete, etc.
+
+	// 3. Start consuming messages from the respective queues
+	if err := rabbitmq.Consume(ch, rabbitmq.QueueMachineCreate, handleMachineCreate); err != nil {
+		return fmt.Errorf("failed to consume from 'machine.create' queue: %w", err)
+	}
+
+	if err := rabbitmq.Consume(ch, rabbitmq.QueueMachineStart, handleMachineStart); err != nil {
+		return fmt.Errorf("failed to consume from 'machine.start' queue: %w", err)
+	}
+
+	// ... Start consuming from other queues: QueueMachineStop, QueueMachineDelete, etc.
+
+	// 4. Keep the service running to listen for messages
 	forever := make(chan bool)
-
-	go func() {
-		for msg := range messages {
-			var machineMsg common.MachineMessage
-			if err := msg.Unmarshal(machineMsg); err != nil {
-				// Handle unmarshaling error (log, nack, etc.)
-				common.Err("Failed to unmarshal message: %s", err)
-				continue // Skip to the next message
-			}
-			common.Head("Received a message: %s", machineMsg)
-
-			// Create the machine
-			if err := createMachine(db, dockerClient, minioClient, minioCfg.TemplatesBucket, &machineMsg); err != nil {
-				// Handle machine creation error (log, nack, etc.)
-				common.Err("Failed to create machine: %s", err)
-				continue // Skip to the next message
-			}
-
-			if err := msg.Ack(false); err != nil {
-				common.Err("Failed to acknowledge message: %s", err)
-			}
-		}
-	}()
-
-	common.Info(" [*] Waiting for messages. To exit press CTRL+C")
 	<-forever
-}
-
-func createMachine(db *gorm.DB, dockerClient *client.Client, minioClient *minio.Client, minioBucket string, msg *common.MachineMessage) error {
-	ctx := context.Background()
-
-	// 1. Get the template file from MinIO
-	templateFileName := msg.TemplateID.String() + ".zip"
-	templateFilePath := "/tmp/" + templateFileName // Or a suitable temporary location
-	err := common.DownloadTemplate(ctx, minioClient, templateFileName, templateFilePath, minioBucket)
-	if err != nil {
-		return fmt.Errorf("failed to download template: %w", err)
-	}
-
-	// 2. Create the machine (Implement container creation logic using dockerClient)
-	containerID, machineIP, err := createContainerFromTemplate(ctx, dockerClient, templateFilePath)
-	if err != nil {
-		return fmt.Errorf("failed to create container from template: %w", err)
-	}
-
-	// 3. Store machine information in the database
-	newMachine := &Machine{
-		UserID:      msg.UserID,
-		TemplateID:  msg.TemplateID,
-		Name:        "Machine-" + msg.MachineID.String(), // You might want to generate this differently
-		Status:      "running",                           // Or another appropriate initial status
-		ContainerID: containerID,
-		IP:          machineIP,
-		URL:         "test",
-		Port:        22, // Default SSH port, adjust as needed
-	}
-	if err := db.Create(&newMachine).Error; err != nil {
-		return fmt.Errorf("failed to save machine to database: %w", err)
-	}
-
-	// 4. Send message to Dynoxy to set up the proxy (implementation will be added later)
-	if err := sendDynoxySetupMessage(msg.MachineID); err != nil {
-		return fmt.Errorf("failed to send Dynoxy setup message: %w", err)
-	}
-
 	return nil
-}
-
-func createContainerFromTemplate(ctx context.Context, dockerClient *client.Client, templatePath string) (string, string, error) {
-
-	// 1. Extract the template (assuming it's a zip file)
-	tempDir, err := os.MkdirTemp("", "cestx-template-*")
-	if err != nil {
-		return "", "", fmt.Errorf("failed to create temporary directory: %w", err)
-	}
-	defer os.RemoveAll(tempDir) // Clean up the temporary directory
-
-	if err := common.Unzip(templatePath, tempDir); err != nil {
-		return "", "", fmt.Errorf("failed to unzip template: %w", err)
-	}
-
-	// 2. Build Docker image (if a Dockerfile is present)
-	dockerfilePath := filepath.Join(tempDir, "Dockerfile")
-	if _, err := os.Stat(dockerfilePath); err == nil { // Check if Dockerfile exists
-		// Image build context is the directory containing the Dockerfile
-		buildCtx, err := archive.TarWithOptions(tempDir, &archive.TarOptions{})
-		if err != nil {
-			return "", "", fmt.Errorf("failed to create build context: %w", err)
-		}
-		defer buildCtx.Close()
-
-		// Build the image
-		imageBuildResponse, err := dockerClient.ImageBuild(
-			ctx,
-			buildCtx,
-			types.ImageBuildOptions{
-				Dockerfile: "Dockerfile",
-				Tags:       []string{"cestx-machine-image:" + uuid.New().String()}, // Tag the image
-				Remove:     true,                                                   // Remove intermediate containers
-			},
-		)
-		if err != nil {
-			return "", "", fmt.Errorf("failed to build Docker image: %w", err)
-		}
-		defer imageBuildResponse.Body.Close()
-	}
-
-	// 3. Create the container (using Sysbox as the runtime)
-	containerConfig := &container.Config{
-		Image:        "cestx-machine-image:" + uuid.New().String(), // Use the newly built image
-		AttachStdin:  true,
-		AttachStdout: true,
-		AttachStderr: true,
-		Tty:          true,
-		OpenStdin:    true,
-	}
-
-	hostConfig := &container.HostConfig{
-		// Port bindings, volume mounts, and other host-level configurations can go here.
-		// ...
-		Runtime: "sysbox-runc", // Specify Sysbox as the runtime
-	}
-
-	containerCreateResponse, err := dockerClient.ContainerCreate(
-		ctx,
-		containerConfig,
-		hostConfig,
-		nil,
-		nil,
-		"cestx-machine-"+uuid.New().String(), // Unique container name
-	)
-	if err != nil {
-		return "", "", fmt.Errorf("failed to create container: %w", err)
-	}
-
-	// 4. Start the container
-	if err := dockerClient.ContainerStart(ctx, containerCreateResponse.ID, types.ContainerStartOptions{}); err != nil {
-		return "", "", fmt.Errorf("failed to start container: %w", err)
-	}
-
-	// 5. Get the container's IP address (example for a bridge network)
-	containerJSON, err := dockerClient.ContainerInspect(ctx, containerCreateResponse.ID)
-	if err != nil {
-		return "", "", fmt.Errorf("failed to inspect container: %w", err)
-	}
-
-	containerIP := containerJSON.NetworkSettings.Networks["bridge"].IPAddress // Adjust network name as needed
-
-	return containerCreateResponse.ID, containerIP, nil
-}
-
-func sendDynoxySetupMessage(machineID uuid.UUID) error {
-	// TODO: Implement RabbitMQ message sending logic to notify Dynoxy about the new machine.
-	return nil
-}
-
-func initDatabase(cfg *common.PostgresConfig) (*gorm.DB, error) {
-	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable TimeZone=Asia/Shanghai",
-		cfg.Host, cfg.User, cfg.Password, cfg.DBName, cfg.Port)
-	return gorm.Open(postgres.Open(dsn), &gorm.Config{})
 }
