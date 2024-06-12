@@ -44,6 +44,7 @@ func InitializeClients() {
 
 	// Initialize RabbitMQ connection
 	rabbitCfg := common.LoadRabbitMQConfig()
+	common.Warn("RabbitMQ config: %+v", rabbitCfg)
 	amqpConn, _ = rabbitmq.NewConnection(rabbitCfg)
 
 	// Initialize RabbitMQ channel
