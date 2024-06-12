@@ -27,6 +27,7 @@ func connect(cfg *common.RabbitMQConfig) (*amqp.Connection, error) {
 	var conn *amqp.Connection
 	retries := 3                     // Total connection attempts
 	retryInterval := 2 * time.Second // Initial retry interval
+	common.Warn("Connecting to RabbitMQ at %s...", cfg.Host)
 
 	for i := 1; i <= retries; i++ {
 		common.Out("Attempting to connect to RabbitMQ (attempt %d/%d)", i, retries)

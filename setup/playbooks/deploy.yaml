@@ -82,10 +82,10 @@
       args:
         chdir: /home/cestx/deployer
 
-    - name: Copy telegram service file
-      ansible.builtin.template:
-        src: "../services/telegram.service"
-        dest: "/etc/systemd/system/telegram.service"
+    # - name: Copy telegram service file
+    #   ansible.builtin.template:
+    #     src: "../services/telegram.service"
+    #     dest: "/etc/systemd/system/telegram.service"
 
     - name: Copy deployer service file
       ansible.builtin.template:
@@ -108,12 +108,12 @@
       ansible.builtin.systemd:
         daemon_reload: yes
 
-    - name: Enable and start telegram service
-      ansible.builtin.systemd:
-        name: "telegram"
-        enabled: yes
-        state: restarted
-        force: yes
+    # - name: Enable and start telegram service
+    #   ansible.builtin.systemd:
+    #     name: "telegram"
+    #     enabled: yes
+    #     state: restarted
+    #     force: yes
 
     - name: Enable and start deployer service
       ansible.builtin.systemd:

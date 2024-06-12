@@ -113,7 +113,7 @@ type RabbitMQConfig struct {
 // LoadConfig loads the configuration from environment variables
 func LoadRabbitMQConfig() *RabbitMQConfig {
 	return &RabbitMQConfig{
-		Host:     GetEnv("RABBITMQ_HOST", "192.168.4.62"),
+		Host:     GetEnv("RABBITMQ_URL", "192.168.4.62"),
 		Username: GetEnv("RABBITMQ_USERNAME", "admin"),
 		Password: GetEnv("RABBITMQ_PASSWORD", "password"),
 	}
