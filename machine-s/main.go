@@ -80,6 +80,7 @@ func main() {
 
 // InitializeClients sets up connections to external services.
 func InitializeClients() {
+	var err error
 	// Initialize Minio client
 	minioCfg := common.LoadMinIOConfig()
 	minioClient, _ = minio.NewMinIOClient(minioCfg)
@@ -94,7 +95,10 @@ func InitializeClients() {
 
 	// Initialize RabbitMQ connection
 	rabbitCfg := common.LoadRabbitMQConfig()
-	amqpConn, _ = rabbitmq.NewConnection(rabbitCfg)
+	amqpConn, err = rabbitmq.NewConnection(rabbitCfg)
+	if err != nil {
+		common.Fatal("Failed to connect to RabbitMQ: %v", err)
+	}
 }
 
 // closeClients closes connections to external services.

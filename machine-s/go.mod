@@ -2,6 +2,12 @@ module github.com/nesiler/cestx/machine-s
 
 replace github.com/nesiler/cestx/rabbitmq => ../rabbitmq
 
+replace github.com/nesiler/cestx/redis => ../redis
+
+replace github.com/nesiler/cestx/postgresql => ../postgresql
+
+replace github.com/nesiler/cestx/common => ../common
+
 go 1.22.4
 
 require (
