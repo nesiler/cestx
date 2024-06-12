@@ -23,13 +23,6 @@ func registerServiceHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get the external IP address of the service
-	service.Address, err = common.ExternalIP()
-	if err != nil {
-		common.Warn("Failed to get external IP for service %s: %v", service.Name, err)
-		// You might want to handle this differently, e.g., return an error
-	}
-
 	registerService(service)
 	scheduleHealthCheck(service)
 
