@@ -112,7 +112,7 @@ func closeClients() {
 	// (Optional) Close other client connections if needed
 }
 
-// registerService registers the machine-s with the registry service.
+// registerService registers the dynoxy-s with the registry service
 func registerService() {
 	// Read the service configuration from service.json
 	serviceData, err := os.ReadFile("service.json")
@@ -125,6 +125,9 @@ func registerService() {
 	// Set the service address
 	service.Address, err = common.ExternalIP()
 	common.FailError(err, "Failed to get external IP: %v\n", err)
+
+	common.REGISTRY_HOST = common.GetEnv("REGISTRY_HOST", "192.168.4.63")
+	common.PYTHON_API_HOST = common.GetEnv("PYTHON_API_HOST", "192.168.4.99")
 
 	// Register the service with the registry
 	err = common.RegisterService(service)
