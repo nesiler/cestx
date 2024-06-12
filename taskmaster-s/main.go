@@ -31,6 +31,10 @@ func main() {
 	// 3. Register Service
 	go registerService(service)
 	go healthCheck(service)
+
+	// Keep the service running to listen for messages
+	forever := make(chan bool)
+	<-forever
 }
 
 // registerService registers the machine-s with the registry service.
