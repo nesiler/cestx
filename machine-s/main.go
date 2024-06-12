@@ -107,7 +107,7 @@ func closeClients() {
 	}
 
 	// Close Redis connection
-	if redisClient != nil && redisClient != nil {
+	if redisClient != nil {
 		if err := redisClient.Close(); err != nil {
 			common.Err("Failed to close Redis connection: %v", err)
 		}
