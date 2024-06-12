@@ -73,7 +73,9 @@ func initClients() {
 	// Initialize RabbitMQ connection
 	rabbitCfg := common.LoadRabbitMQConfig()
 	amqpConn, err = rabbitmq.NewConnection(rabbitCfg)
-	common.FailError(err, "Failed to initialize RabbitMQ connection: %v\n", err)
+	if err != nil {
+		common.Fatal("Failed to connect to RabbitMQ: %v", err)
+	}
 }
 
 // closeClients closes the RabbitMQ connection
