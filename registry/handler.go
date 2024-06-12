@@ -41,7 +41,12 @@ func registerService(service common.ServiceConfig) {
 	common.SendMessageToTelegram("**REGISTRY** ::: Registering service: " + service.Name)
 
 	serviceData, err := json.Marshal(service)
-	common.FailError(err, "")
+	if err != nil {
+		common.Err("Failed to marshal service data: %v", err)
+		return
+	}
+
+	common.Warn("Service data: %s", serviceData)
 
 	err = rdb.HSet(ctx, "service:"+service.ID, map[string]interface{}{
 		"data":   serviceData,
@@ -100,6 +105,7 @@ func scheduleHealthCheck(service common.ServiceConfig) {
 	healthCheckFunc := func() {
 		// Construct the health check URL
 		healthCheckURL := fmt.Sprintf("http://%s:%d%s", service.Address, service.Port, service.HealthCheck.Endpoint)
+		common.Warn("Health check URL: %s", healthCheckURL)
 
 		// Perform the health check request
 		resp, err := http.Get(healthCheckURL)
