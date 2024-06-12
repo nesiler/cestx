@@ -16,8 +16,6 @@ import (
 	amqp "github.com/streadway/amqp"
 )
 
-// ... other functions (InitializeClients, etc.)
-
 // CreateMachine handles the creation of a new machine.
 func CreateMachine(msg rabbitmq.MachineMessage, amqpConn *amqp.Connection) error {
 	ch, err := amqpConn.Channel()

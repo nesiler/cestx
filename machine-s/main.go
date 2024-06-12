@@ -70,27 +70,21 @@ func main() {
 
 // InitializeClients sets up connections to external services.
 func InitializeClients() {
-	var err error
-
 	// Initialize Minio client
 	minioCfg := common.LoadMinIOConfig()
-	minioClient, err = minio.NewMinIOClient(minioCfg)
-	common.FailError(err, "Failed to initialize Minio client: %v\n", err)
+	minioClient, _ = minio.NewMinIOClient(minioCfg)
 
 	// Initialize PostgreSQL client
 	dbCfg := common.LoadPostgreSQLConfig()
-	postgresClient, err = postgresql.NewPostgreSQLDB(dbCfg)
-	common.FailError(err, "Failed to initialize PostgreSQL client: %v\n", err)
+	postgresClient, _ = postgresql.NewPostgreSQLDB(dbCfg)
 
 	// Initialize Redis client
 	redisCfg := common.LoadRedisConfig()
-	redisClient, err = redis.NewRedisClient(redisCfg)
-	common.FailError(err, "Failed to initialize Redis client: %v\n", err)
+	redisClient, _ = redis.NewRedisClient(redisCfg)
 
 	// Initialize RabbitMQ connection
 	rabbitCfg := common.LoadRabbitMQConfig()
-	amqpConn, err = rabbitmq.NewConnection(rabbitCfg)
-	common.FailError(err, "Failed to initialize RabbitMQ connection: %v\n", err)
+	amqpConn, _ = rabbitmq.NewConnection(rabbitCfg)
 }
 
 // closeClients closes connections to external services.
@@ -109,7 +103,6 @@ func closeClients() {
 		}
 	}
 
-	// (Optional) Close other client connections if needed
 }
 
 // registerService registers the dynoxy-s with the registry service
@@ -161,8 +154,6 @@ func consumeMessages() error {
 		return handleMessage(delivery, amqpConn)
 	}
 
-	// ... Define similar consumer functions for handleMachineStop, handleMachineDelete, etc.
-
 	// 3. Start consuming messages from the respective queues
 	if err := rabbitmq.Consume(ch, rabbitmq.QueueMachineCreate, handleMachineCreate); err != nil {
 		return fmt.Errorf("failed to consume from 'machine.create' queue: %w", err)
@@ -171,8 +162,6 @@ func consumeMessages() error {
 	if err := rabbitmq.Consume(ch, rabbitmq.QueueMachineStart, handleMachineStart); err != nil {
 		return fmt.Errorf("failed to consume from 'machine.start' queue: %w", err)
 	}
-
-	// ... Start consuming from other queues: QueueMachineStop, QueueMachineDelete, etc.
 
 	// 4. Keep the service running to listen for messages
 	forever := make(chan bool)
