@@ -74,9 +74,6 @@ func CreateMachine(msg rabbitmq.MachineMessage, amqpConn *amqp.Connection) error
 
 	common.Info("Container ID: %s", containerID) // Log the container ID for reference
 
-	// 6. Generate a random password
-	// You can use a library like "github.com/sethvargo/go-password/password"
-	// For simplicity, we're using a placeholder here.
 	randomPassword := "generated-password"
 
 	// 7. Store machine details in PostgreSQL
@@ -86,8 +83,8 @@ func CreateMachine(msg rabbitmq.MachineMessage, amqpConn *amqp.Connection) error
 		TemplateID: msg.TemplateID,
 		Status:     true,
 		Password:   randomPassword,
-		ExpiresAt:  time.Now().Add(time.Hour * 1),                       // Default expiration: 1 hour
-		URL:        fmt.Sprintf("%s.%s", containerID, "yourdomain.com"), // Update with your domain
+		ExpiresAt:  time.Now().Add(time.Hour * 1),                  // Default expiration: 1 hour
+		URL:        fmt.Sprintf("%s.%s", containerID, "cestx.com"), // Update with your domain
 	}
 
 	machineRepo := postgresql.NewMachineRepository(postgresClient)

@@ -77,9 +77,9 @@ func Setup(client *proxmox.Client, fConfigFile *string) {
 	// CreateAll(client, fConfigFile)
 	// fmt.Print("All containers created successfully.\n")
 
-	// // Start all containers
-	// StartAll(client)
-	// fmt.Print("All containers started successfully.\n")
+	// Start all containers
+	StartAll(client)
+	fmt.Print("All containers started successfully.\n")
 
 	// // Run playbook: playbooks/setup-proxmox-api.yaml
 	// fmt.Print("Setting up Proxmox API...\n")
@@ -92,12 +92,12 @@ func Setup(client *proxmox.Client, fConfigFile *string) {
 	// err = runAnsiblePlaybook("playbooks/docker.yaml", "systems", nil)
 	// failError(err)
 
-	// Run playbook for systems launch: playbooks/lanch.yaml
-	fmt.Print("Launching systems...\n")
-	for _, host := range hosts {
-		err = runAnsiblePlaybook("playbooks/launch.yaml", host, map[string]string{"target": host})
-		failError(err)
-	}
+	// // Run playbook for systems launch: playbooks/lanch.yaml
+	// fmt.Print("Launching systems...\n")
+	// for _, host := range hosts {
+	// 	err = runAnsiblePlaybook("playbooks/launch.yaml", host, map[string]string{"target": host})
+	// 	failError(err)
+	// }
 
 	// // Run playbook for master host: playbooks/docker.yaml
 	// fmt.Print("Installing Docker on master host...\n")
