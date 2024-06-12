@@ -90,6 +90,9 @@ func registerService() {
 	service.Address, err = common.ExternalIP()
 	common.FailError(err, "Failed to get external IP: %v\n", err)
 
+	common.REGISTRY_HOST = common.GetEnv("REGISTRY_HOST", "192.168.4.63")
+	common.PYTHON_API_HOST = common.GetEnv("PYTHON_API_HOST", "192.168.4.99")
+	
 	// Register the service with the registry
 	err = common.RegisterService(service)
 	if err != nil {
