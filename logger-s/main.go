@@ -2,46 +2,51 @@ package main
 
 import (
 	"fmt"
-	"net/http"
 	"os"
+	"time"
 
 	"github.com/joho/godotenv"
 	"github.com/nesiler/cestx/common"
 )
 
 func main() {
+	// 1. Load Environment Variables
 	godotenv.Load("../.env")
 	godotenv.Load(".env")
 
-	common.PYTHON_API_HOST = os.Getenv("PYTHON_API_HOST")
-	if common.PYTHON_API_HOST == "" {
-		common.Warn("PYTHON_API_HOST not set, using default value")
-		common.PYTHON_API_HOST = "http://192.168.4.99"
-	}
-	common.SendMessageToTelegram("**LOGGER** ::: Service started")
+	common.PYTHON_API_HOST = common.GetEnv("PYTHON_API_HOST", "")
+	common.TELEGRAM_TOKEN = common.GetEnv("TELEGRAM_TOKEN", "")
+	common.CHAT_ID = common.GetEnv("CHAT_ID", "")
+	common.REGISTRY_HOST = common.GetEnv("REGISTRY_HOST", "")
 
-	// Load service configuration from file
-	serviceFile, err := os.ReadFile("service.json")
-	common.FailError(err, "error reading service file: %v", err)
-	service, err := common.LoadServiceConfig(serviceFile)
-	common.FailError(err, "error converting JSON to Service: %v", err)
+	// Register Service
+	go registerService()
+}
 
-	if service.Address == "" {
-		service.Address, err = common.ExternalIP()
-		common.FailError(err, "error finding external IP: %v", err)
-	}
+// registerService registers the machine-s with the registry service.
+func registerService() {
+	// Read the service configuration from service.json
+	serviceData, err := os.ReadFile("service.json")
+	common.FailError(err, "Failed to read service configuration: %v\n", err)
+
+	// Load service configuration
+	service, err := common.LoadServiceConfig(serviceData)
+	common.FailError(err, "Failed to load service configuration: %v\n", err)
+
+	// Set the service address
+	service.Address, err = common.ExternalIP()
+	common.FailError(err, "Failed to get external IP: %v\n", err)
 
 	// Register the service with the registry
-	common.REGISTRY_HOST = os.Getenv("REGISTRY_HOST")
 	err = common.RegisterService(service)
-	common.FailError(err, "error registering service: %v", err)
-
-	// Setup health check endpoint
-	http.HandleFunc("/health", common.HealthHandler())
-
-	// Start the server
-	common.Info("Starting %v on port %d", service.Name, service.Port)
-	if err := http.ListenAndServe(fmt.Sprintf(":%d", service.Port), nil); err != nil {
-		common.Fatal("Server failed to start: %v\n", err)
+	if err != nil {
+		// Log the error, retry registration after a delay
+		common.Warn("Failed to register service: %v", err)
+		time.Sleep(5 * time.Second)
+		registerService() // Retry registration
+		return
 	}
+
+	// Send a Telegram message on successful registration
+	common.SendMessageToTelegram(fmt.Sprintf("**%s** ::: Service registered successfully!", service.Name))
 }
