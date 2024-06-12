@@ -1,7 +1,7 @@
 {
   "id": "registry",
   "name": "Registry",
-  "address": "",
+  "address": "192.168.4.63",
   "port": 4099,
   "healthCheck": {
     "endpoint": "/health",

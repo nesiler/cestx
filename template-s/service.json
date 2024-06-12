@@ -1,7 +1,7 @@
 {
   "id": "template-s",
   "name": "Template",
-  "address": "",
+  "address": "192.168.4.67",
   "port": 4067,
   "healthCheck": {
     "endpoint": "/health",

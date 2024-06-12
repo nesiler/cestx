@@ -1,7 +1,7 @@
 {
   "id": "logger-s",
   "name": "Logger",
-  "address": "",
+  "address": "192.168.4.64",
   "port": 4063,
   "healthCheck": {
     "endpoint": "/health",
