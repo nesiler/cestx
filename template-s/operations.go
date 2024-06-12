@@ -111,21 +111,17 @@ func handleMessage(delivery amqp.Delivery) {
 	var templateMessage rabbitmq.TemplateMessage
 	if err := json.Unmarshal(delivery.Body, &templateMessage); err != nil {
 		common.Err("Error unmarshalling message: %v", err)
-		// Handle the error (e.g., nack the message)
 		return
 	}
 
 	common.Info("Received message: %+v", templateMessage)
 
-	// TODO: You'll likely need a TemplateID in the message to identify the template
-
 	// Implement logic for different template events (create, delete, ...)
 	switch templateMessage.Event {
 	case rabbitmq.TemplateCreate:
-		// Call UploadTemplate function here
+		UploadTemplate(templateMessage.Name, templateMessage.Name, templateMessage.TemplateID)
 	case rabbitmq.TemplateDelete:
-		// Call DeleteTemplate function here
-	// ... handle other events
+		DeleteTemplate(templateMessage.Name)
 	default:
 		common.Warn("Unknown template event: %s", templateMessage.Event)
 	}

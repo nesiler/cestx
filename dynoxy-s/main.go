@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -29,12 +30,21 @@ func main() {
 	common.CHAT_ID = common.GetEnv("CHAT_ID", "")
 	common.REGISTRY_HOST = common.GetEnv("REGISTRY_HOST", "")
 
+	// Read the service configuration from service.json
+	serviceData, err := os.ReadFile("service.json")
+	common.FailError(err, "Failed to read service configuration: %v\n", err)
+
+	// Load service configuration
+	service, err := common.LoadServiceConfig(serviceData)
+	common.FailError(err, "Failed to load service configuration: %v\n", err)
+
+	// 3. Register Service
+	go registerService(service)
+	go healthCheck(service)
+
 	// 2. Initialize Clients (RabbitMQ)
 	initClients()
 	defer closeClients()
-
-	// 3. Register Service
-	go registerService()
 
 	// 4. Start Consuming Messages
 	common.Head("Starting Dynoxy Service...")
@@ -76,30 +86,23 @@ func closeClients() {
 	}
 }
 
-// registerService registers the dynoxy-s with the registry service
-func registerService() {
-	// Read the service configuration from service.json
-	serviceData, err := os.ReadFile("service.json")
-	common.FailError(err, "Failed to read service configuration: %v\n", err)
-
-	// Load service configuration
-	service, err := common.LoadServiceConfig(serviceData)
-	common.FailError(err, "Failed to load service configuration: %v\n", err)
-
+// registerService registers the machine-s with the registry service.
+func registerService(service *common.ServiceConfig) {
+	var err error
 	// Set the service address
 	service.Address, err = common.ExternalIP()
 	common.FailError(err, "Failed to get external IP: %v\n", err)
 
 	common.REGISTRY_HOST = common.GetEnv("REGISTRY_HOST", "192.168.4.63")
 	common.PYTHON_API_HOST = common.GetEnv("PYTHON_API_HOST", "192.168.4.99")
-	
+
 	// Register the service with the registry
 	err = common.RegisterService(service)
 	if err != nil {
 		// Log the error, retry registration after a delay
 		common.Warn("Failed to register service: %v", err)
 		time.Sleep(5 * time.Second)
-		registerService() // Retry registration
+		registerService(service) // Retry registration
 		return
 	}
 
@@ -123,4 +126,15 @@ func consumeMessages() {
 	// Keep the service running to listen for messages
 	forever := make(chan bool)
 	<-forever
+}
+
+func healthCheck(service *common.ServiceConfig) {
+	// Setup health check endpoint
+	http.HandleFunc("/health", common.HealthHandler())
+
+	// Start the server
+	common.Info("Starting %v on port %d", service.Name, service.Port)
+	if err := http.ListenAndServe(fmt.Sprintf(":%d", service.Port), nil); err != nil {
+		common.Fatal("Server failed to start: %v\n", err)
+	}
 }

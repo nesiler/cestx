@@ -2,24 +2,17 @@ package main
 
 import (
 	"fmt"
-	"log"
+	"net/http"
 	"os"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/joho/godotenv"
 	"github.com/nesiler/cestx/common"
 )
 
-func registerService() {
-	// Read the service configuration from service.json
-	serviceData, err := os.ReadFile("service.json")
-	common.FailError(err, "Failed to read service configuration: %v\n", err)
-
-	// Load service configuration
-	service, err := common.LoadServiceConfig(serviceData)
-	common.FailError(err, "Failed to load service configuration: %v\n", err)
-
+// registerService registers the machine-s with the registry service.
+func registerService(service *common.ServiceConfig) {
+	var err error
 	// Set the service address
 	service.Address, err = common.ExternalIP()
 	common.FailError(err, "Failed to get external IP: %v\n", err)
@@ -33,7 +26,7 @@ func registerService() {
 		// Log the error, retry registration after a delay
 		common.Warn("Failed to register service: %v", err)
 		time.Sleep(5 * time.Second)
-		registerService() // Retry registration
+		registerService(service) // Retry registration
 		return
 	}
 
@@ -42,31 +35,47 @@ func registerService() {
 }
 
 func main() {
+	// 1. Load Environment Variables
 	godotenv.Load("../.env")
 	godotenv.Load(".env")
+
+	common.PYTHON_API_HOST = common.GetEnv("PYTHON_API_HOST", "")
+	common.TELEGRAM_TOKEN = common.GetEnv("TELEGRAM_TOKEN", "")
+	common.CHAT_ID = common.GetEnv("CHAT_ID", "")
+	common.REGISTRY_HOST = common.GetEnv("REGISTRY_HOST", "")
+
+	// Read the service configuration from service.json
+	serviceData, err := os.ReadFile("service.json")
+	common.FailError(err, "Failed to read service configuration: %v\n", err)
+
+	// Load service configuration
+	service, err := common.LoadServiceConfig(serviceData)
+	common.FailError(err, "Failed to load service configuration: %v\n", err)
+
+	// 3. Register Service
+	go registerService(service)
+	go healthCheck(service)
 
 	// Initialize clients and other setup
 	InitializeClients()
 	defer amqpConn.Close()
 
-	// Register the service with the service registry
-	go registerService()
-
 	common.Head("Starting Template Service...")
 	common.SendMessageToTelegram("**TEMPLATE SERVICE** ::: Service starting...")
 
-	// Example usage (replace with your actual logic)
-	if len(os.Args) > 2 {
-		templateName := os.Args[1]
-		filePath := os.Args[2]
+	// Consume messages and keep program running
+	forever := make(chan bool)
+	go ConsumeMessages()
+	<-forever
+}
 
-		// Assuming you have a way to get the current user's ID
-		userID, _ := uuid.NewRandom() // Replace with actual logic
+func healthCheck(service *common.ServiceConfig) {
+	// Setup health check endpoint
+	http.HandleFunc("/health", common.HealthHandler())
 
-		if err := UploadTemplate(templateName, filePath, userID); err != nil {
-			log.Fatal(err)
-		}
-	} else {
-		ConsumeMessages()
+	// Start the server
+	common.Info("Starting %v on port %d", service.Name, service.Port)
+	if err := http.ListenAndServe(fmt.Sprintf(":%d", service.Port), nil); err != nil {
+		common.Fatal("Server failed to start: %v\n", err)
 	}
 }
