@@ -78,4 +78,4 @@ Projenin kurulumu ve çalıştırılması için gerekli adımlar:
 
 ## 📝 Lisans
 
-Bu proje MIT lisansı altında lisanslanmıştır. Detaylar için [LICENSE](LICENSE) dosyasına bakınız.
+Bu proje GNU lisansı altında lisanslanmıştır. Detaylar için [LICENSE](LICENSE) dosyasına bakınız.
